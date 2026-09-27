@@ -178,7 +178,6 @@
 
   <h1 id="titleDisplay">🏢 現場チェックシート</h1>
 
-  <!-- 🏢 現場名 & 👤 作業者名 -->
   <div class="header-setting">
     <div class="input-group">
       <label for="siteNameInput">現場名:</label>
@@ -190,7 +189,6 @@
     </div>
   </div>
 
-  <!-- 部屋追加 & 音声入力フォーム -->
   <div class="form-container">
     <input type="text" id="roomInput" placeholder="部屋 (例: 101)" onkeydown="handleRoomEnter(event)" />
     <button id="voiceBtn" class="voice-btn" onclick="startVoiceInput()">🎤 声で操作</button>
@@ -212,7 +210,6 @@
   </table>
 
   <script>
-    // ヘッダー情報の初期設定
     let siteName = localStorage.getItem('siteName') || '';
     let currentWorker = localStorage.getItem('workerName') || '';
 
@@ -236,7 +233,7 @@
     function handleHeaderEnter(event) {
       if (event.key === 'Enter') {
         saveHeaderInfo();
-        event.target.blur(); // キーボードを閉じる・フォーカスを外す
+        event.target.blur();
       }
     }
 
@@ -246,7 +243,6 @@
       }
     }
 
-    // データ初期化
     let rooms = JSON.parse(localStorage.getItem('roomCheckList')) || [
       { id: '101', completed: true, worker: '山田', completedAt: '09/27 10:15', memo: '傷なし' },
       { id: '102', completed: false, worker: '', completedAt: '', memo: '' },
@@ -275,16 +271,20 @@
         const tr = document.createElement('tr');
         tr.className = room.completed ? 'status-completed' : 'status-uncompleted';
 
+        const workerText = room.worker ? room.worker : '担当者';
+        const dateText = room.completedAt ? room.completedAt : '-';
+        const memoText = room.memo ? room.memo : '';
+
         tr.innerHTML = `
           <td><strong>${room.id}号室</strong></td>
           <td>
             ${room.completed 
               ? `<span class="badge-completed">完了</span>
-                 <div class="meta-info">👤 ${room.worker \vert{}\vert{} '担当者'}<br>🕒 ${room.completedAt || '-'}</div>` 
+                 <div class="meta-info">👤 ${workerText}<br>🕒 ${dateText}</div>` 
               : '<span class="badge-uncompleted">未完了</span>'}
           </td>
           <td>
-            <input type="text" class="memo-input" value="${room.memo || ''}" placeholder="メモ..." onchange="updateMemo(${index}, this.value)" onkeydown="handleMemoEnter(event)" />
+            <input type="text" class="memo-input" value="${memoText}" placeholder="メモ..." onchange="updateMemo(${index}, this.value)" onkeydown="handleMemoEnter(event)" />
           </td>
           <td>
             <button class="action-btn ${room.completed ? 'btn-reset' : 'btn-toggle'}" onclick="toggleStatus(${index})">
@@ -306,7 +306,7 @@
 
     function handleMemoEnter(event) {
       if (event.key === 'Enter') {
-        event.target.blur(); // メモ入力中にEnterでフォーカスを外して確定させる
+        event.target.blur();
       }
     }
 
@@ -357,7 +357,6 @@
       }
     }
 
-    // 🎤 音声認識の強化処理（追加・完了・未完了を判別）
     function startVoiceInput() {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (!SpeechRecognition) {
@@ -379,7 +378,6 @@
         voiceBtn.textContent = '🎤 声で操作';
         voiceBtn.classList.remove('recording');
 
-        // 数字（部屋番号）を抽出
         let roomNum = transcript.replace(/[^0-9]/g, '');
 
         if (!roomNum) {
@@ -387,7 +385,6 @@
           return;
         }
 
-        // 判定処理
         if (transcript.includes('未完了') || transcript.includes('戻す') || transcript.includes('キャンセル')) {
           let index = rooms.findIndex(r => r.id === roomNum);
           if (index !== -1) {
