@@ -5,178 +5,40 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>部屋チェックシート</title>
   <style>
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      margin: 12px;
-      background-color: #f8f9fa;
-    }
-    h1 {
-      font-size: 1.3rem;
-      color: #333;
-      margin-bottom: 15px;
-    }
-    .header-setting {
-      background: #ffffff;
-      padding: 12px;
-      border-radius: 8px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.08);
-      margin-bottom: 12px;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-    .input-group {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .input-group label {
-      font-weight: bold;
-      font-size: 0.9rem;
-      white-space: nowrap;
-      width: 65px;
-    }
-    .form-container {
-      background: white;
-      padding: 12px;
-      border-radius: 8px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.08);
-      margin-bottom: 15px;
-      display: flex;
-      gap: 8px;
-      align-items: center;
-      flex-wrap: wrap;
-    }
-    input[type="text"] {
-      padding: 8px 10px;
-      font-size: 0.95rem;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      box-sizing: border-box;
-    }
-    #siteNameInput {
-      flex: 1;
-      font-weight: bold;
-    }
-    #userNameInput {
-      width: 140px;
-    }
-    #roomInput {
-      width: 110px;
-    }
-    .memo-input {
-      width: 100%;
-      padding: 4px 6px;
-      font-size: 0.85rem;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      box-sizing: border-box;
-      margin-top: 4px;
-    }
-    button.add-btn {
-      padding: 8px 14px;
-      font-size: 0.95rem;
-      background-color: #007bff;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-    button.voice-btn {
-      padding: 8px 12px;
-      font-size: 0.95rem;
-      background-color: #28a745;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-    button.voice-btn.recording {
-      background-color: #dc3545;
-      animation: pulse 1s infinite;
-    }
-    @keyframes pulse {
-      0% { opacity: 1; }
-      50% { opacity: 0.5; }
-      100% { opacity: 1; }
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      background: white;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.08);
-    }
-    th, td {
-      border: 1px solid #dcdcdc;
-      padding: 8px 6px;
-      text-align: center;
-      font-size: 0.85rem;
-    }
-    th {
-      background-color: #e9ecef;
-      color: #495057;
-      font-weight: bold;
-    }
-    tr.status-uncompleted {
-      background-color: #ffe6e6;
-    }
-    tr.status-completed {
-      background-color: #e6ffed;
-    }
-    .badge-uncompleted {
-      color: #d9534f;
-      background: #fdf7f7;
-      padding: 3px 6px;
-      border-radius: 4px;
-      border: 1px solid #d9534f;
-      font-weight: bold;
-      display: inline-block;
-    }
-    .badge-completed {
-      color: #28a745;
-      background: #f4fff6;
-      padding: 3px 6px;
-      border-radius: 4px;
-      border: 1px solid #28a745;
-      font-weight: bold;
-      display: inline-block;
-    }
-    .meta-info {
-      font-size: 0.75rem;
-      color: #555;
-      margin-top: 3px;
-    }
-    .action-btn {
-      padding: 5px 8px;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 0.8rem;
-    }
-    .btn-toggle {
-      background-color: #007bff;
-      color: white;
-    }
-    .btn-reset {
-      background-color: #6c757d;
-      color: white;
-    }
-    .btn-delete {
-      background-color: #dc3545;
-      color: white;
-      margin-top: 4px;
-    }
-    .voice-guide {
-      font-size: 0.75rem;
-      color: #666;
-      width: 100%;
-      margin-top: 2px;
-    }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 12px; background-color: #f8f9fa; }
+    h1 { font-size: 1.3rem; color: #333; margin-bottom: 15px; }
+    .header-setting { background: #ffffff; padding: 12px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.08); margin-bottom: 12px; display: flex; flex-direction: column; gap: 10px; }
+    .input-group { display: flex; align-items: center; gap: 8px; }
+    .input-group label { font-weight: bold; font-size: 0.9rem; white-space: nowrap; width: 65px; }
+    .form-container { background: white; padding: 12px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.08); margin-bottom: 15px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    input[type="text"] { padding: 8px 10px; font-size: 0.95rem; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+    #siteNameInput { flex: 1; font-weight: bold; }
+    #userNameInput { width: 140px; }
+    #roomInput { width: 110px; }
+    .memo-input { width: 100%; padding: 4px 6px; font-size: 0.85rem; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; margin-top: 4px; }
+    button.add-btn { padding: 8px 14px; font-size: 0.95rem; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+    button.voice-btn { padding: 8px 12px; font-size: 0.95rem; background-color: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; }
+    button.voice-btn.recording { background-color: #dc3545; animation: pulse 1s infinite; }
+    @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+    table { width: 100%; border-collapse: collapse; background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.08); }
+    th, td { border: 1px solid #dcdcdc; padding: 8px 6px; text-align: center; font-size: 0.85rem; }
+    th { background-color: #e9ecef; color: #495057; font-weight: bold; }
+    tr.status-uncompleted { background-color: #ffe6e6; }
+    tr.status-completed { background-color: #e6ffed; }
+    .badge-uncompleted { color: #d9534f; background: #fdf7f7; padding: 3px 6px; border-radius: 4px; border: 1px solid #d9534f; font-weight: bold; display: inline-block; }
+    .badge-completed { color: #28a745; background: #f4fff6; padding: 3px 6px; border-radius: 4px; border: 1px solid #28a745; font-weight: bold; display: inline-block; }
+    .meta-info { font-size: 0.75rem; color: #555; margin-top: 3px; }
+    .action-btn { padding: 5px 8px; border: none; border-radius: 4px; cursor: pointer; font-size: 0.8rem; }
+    .btn-toggle { background-color: #007bff; color: white; }
+    .btn-reset { background-color: #6c757d; color: white; }
+    .btn-delete { background-color: #dc3545; color: white; margin-top: 4px; }
+    .voice-guide { font-size: 0.75rem; color: #666; width: 100%; margin-top: 2px; }
+    .sync-status { font-size: 0.8rem; color: #007bff; font-weight: bold; margin-left: auto; }
   </style>
 </head>
 <body>
 
-  <h1 id="titleDisplay">🏢 現場チェックシート</h1>
+  <h1 id="titleDisplay">🏢 現場チェックシート <span id="syncStatus" class="sync-status">同期中...</span></h1>
 
   <div class="header-setting">
     <div class="input-group">
@@ -210,6 +72,8 @@
   </table>
 
   <script>
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbwuX2TJnnkoBtu-5TYnfdPGwDnp9SgJuQCvkamiQBMWTNuq8UpQtD_eKUfoYuBe5mg65A/exec";
+
     let siteName = localStorage.getItem('siteName') || '';
     let currentWorker = localStorage.getItem('workerName') || '';
 
@@ -227,27 +91,18 @@
 
     function updateTitle() {
       const titleElem = document.getElementById('titleDisplay');
-      titleElem.textContent = siteName ? `🏢 ${siteName}` : '🏢 現場チェックシート';
+      titleElem.childNodes[0].textContent = siteName ? `🏢 ${siteName} ` : '🏢 現場チェックシート ';
     }
 
     function handleHeaderEnter(event) {
-      if (event.key === 'Enter') {
-        saveHeaderInfo();
-        event.target.blur();
-      }
+      if (event.key === 'Enter') { saveHeaderInfo(); event.target.blur(); }
     }
 
     function handleRoomEnter(event) {
-      if (event.key === 'Enter') {
-        addRoom();
-      }
+      if (event.key === 'Enter') { addRoom(); }
     }
 
-    let rooms = JSON.parse(localStorage.getItem('roomCheckList')) || [
-      { id: '101', completed: true, worker: '山田', completedAt: '09/27 10:15', memo: '傷なし' },
-      { id: '102', completed: false, worker: '', completedAt: '', memo: '' },
-      { id: '201', completed: false, worker: '', completedAt: '', memo: '' }
-    ];
+    let rooms = [];
 
     function sortRooms() {
       rooms.sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true, sensitivity: 'base' }));
@@ -262,7 +117,35 @@
       return `${month}/${date} ${hours}:${minutes}`;
     }
 
-    function renderTable() {
+    async function loadDataFromCloud() {
+      if (!GAS_URL) return;
+      try {
+        document.getElementById('syncStatus').textContent = "同期中...";
+        const res = await fetch(GAS_URL);
+        const data = await res.json();
+        rooms = data;
+        renderTable(false);
+        document.getElementById('syncStatus').textContent = "最新";
+      } catch (e) {
+        document.getElementById('syncStatus').textContent = "接続エラー";
+      }
+    }
+
+    async function saveDataToCloud() {
+      if (!GAS_URL) return;
+      try {
+        document.getElementById('syncStatus').textContent = "保存中...";
+        await fetch(GAS_URL, {
+          method: "POST",
+          body: JSON.stringify(rooms)
+        });
+        document.getElementById('syncStatus').textContent = "最新";
+      } catch (e) {
+        document.getElementById('syncStatus').textContent = "保存エラー";
+      }
+    }
+
+    function renderTable(shouldSave = true) {
       sortRooms();
       const tbody = document.getElementById('roomTableBody');
       tbody.innerHTML = '';
@@ -296,33 +179,24 @@
         tbody.appendChild(tr);
       });
 
-      localStorage.setItem('roomCheckList', JSON.stringify(rooms));
+      if (shouldSave) saveDataToCloud();
     }
 
     function updateMemo(index, value) {
       rooms[index].memo = value;
-      localStorage.setItem('roomCheckList', JSON.stringify(rooms));
+      saveDataToCloud();
     }
 
     function handleMemoEnter(event) {
-      if (event.key === 'Enter') {
-        event.target.blur();
-      }
+      if (event.key === 'Enter') { event.target.blur(); }
     }
 
     function addRoom(customRoomId) {
       const input = document.getElementById('roomInput');
       const roomId = customRoomId || input.value.trim();
 
-      if (!roomId) {
-        alert('部屋番号を入力してください');
-        return;
-      }
-
-      if (rooms.some(r => r.id === roomId)) {
-        alert('その部屋番号は既に追加されています');
-        return;
-      }
+      if (!roomId) { alert('部屋番号を入力してください'); return; }
+      if (rooms.some(r => r.id === roomId)) { alert('その部屋番号は既に追加されています'); return; }
 
       rooms.push({ id: roomId, completed: false, worker: '', completedAt: '', memo: '' });
       input.value = '';
@@ -359,10 +233,7 @@
 
     function startVoiceInput() {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (!SpeechRecognition) {
-        alert('お使いのブラウザは音声認識に対応していません。');
-        return;
-      }
+      if (!SpeechRecognition) { alert('お使いのブラウザは音声認識に対応していません。'); return; }
 
       const recognition = new SpeechRecognition();
       recognition.lang = 'ja-JP';
@@ -379,49 +250,28 @@
         voiceBtn.classList.remove('recording');
 
         let roomNum = transcript.replace(/[^0-9]/g, '');
-
-        if (!roomNum) {
-          alert(`部屋番号を読み取れませんでした: 「${transcript}」`);
-          return;
-        }
+        if (!roomNum) { alert(`部屋番号を読み取れませんでした: 「${transcript}」`); return; }
 
         if (transcript.includes('未完了') || transcript.includes('戻す') || transcript.includes('キャンセル')) {
           let index = rooms.findIndex(r => r.id === roomNum);
-          if (index !== -1) {
-            toggleStatus(index, false);
-          } else {
-            alert(`${roomNum}号室が見つかりません`);
-          }
+          if (index !== -1) toggleStatus(index, false);
         } else if (transcript.includes('完了') || transcript.includes('おわり') || transcript.includes('済')) {
           let index = rooms.findIndex(r => r.id === roomNum);
-          if (index === -1) {
-            addRoom(roomNum);
-            index = rooms.findIndex(r => r.id === roomNum);
-          }
-          if (index !== -1) {
-            toggleStatus(index, true);
-          }
+          if (index === -1) { addRoom(roomNum); index = rooms.findIndex(r => r.id === roomNum); }
+          if (index !== -1) toggleStatus(index, true);
         } else {
           document.getElementById('roomInput').value = roomNum;
           addRoom(roomNum);
         }
       };
 
-      recognition.onerror = () => {
-        alert('音声が聞き取れませんでした。');
-        voiceBtn.textContent = '🎤 声で操作';
-        voiceBtn.classList.remove('recording');
-      };
-
-      recognition.onend = () => {
-        voiceBtn.textContent = '🎤 声で操作';
-        voiceBtn.classList.remove('recording');
-      };
-
+      recognition.onerror = () => { voiceBtn.textContent = '🎤 声で操作'; voiceBtn.classList.remove('recording'); };
+      recognition.onend = () => { voiceBtn.textContent = '🎤 声で操作'; voiceBtn.classList.remove('recording'); };
       recognition.start();
     }
 
-    renderTable();
+    loadDataFromCloud();
+    setInterval(loadDataFromCloud, 5000);
   </script>
 </body>
 </html>
