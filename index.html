@@ -182,17 +182,17 @@
   <div class="header-setting">
     <div class="input-group">
       <label for="siteNameInput">現場名:</label>
-      <input type="text" id="siteNameInput" placeholder="例: 〇〇マンション新築工事" oninput="saveHeaderInfo()" />
+      <input type="text" id="siteNameInput" placeholder="例: 〇〇マンション新築工事" oninput="saveHeaderInfo()" onkeydown="handleHeaderEnter(event)" />
     </div>
     <div class="input-group">
       <label for="userNameInput">作業者:</label>
-      <input type="text" id="userNameInput" placeholder="例: 山田" oninput="saveHeaderInfo()" />
+      <input type="text" id="userNameInput" placeholder="例: 山田" oninput="saveHeaderInfo()" onkeydown="handleHeaderEnter(event)" />
     </div>
   </div>
 
   <!-- 部屋追加 & 音声入力フォーム -->
   <div class="form-container">
-    <input type="text" id="roomInput" placeholder="部屋 (例: 101)" />
+    <input type="text" id="roomInput" placeholder="部屋 (例: 101)" onkeydown="handleRoomEnter(event)" />
     <button id="voiceBtn" class="voice-btn" onclick="startVoiceInput()">🎤 声で操作</button>
     <button class="add-btn" onclick="addRoom()">追加</button>
     <div class="voice-guide">💡 音声例: 「101追加」「101完了」「101未完了」</div>
@@ -233,6 +233,19 @@
       titleElem.textContent = siteName ? `🏢 ${siteName}` : '🏢 現場チェックシート';
     }
 
+    function handleHeaderEnter(event) {
+      if (event.key === 'Enter') {
+        saveHeaderInfo();
+        event.target.blur(); // キーボードを閉じる・フォーカスを外す
+      }
+    }
+
+    function handleRoomEnter(event) {
+      if (event.key === 'Enter') {
+        addRoom();
+      }
+    }
+
     // データ初期化
     let rooms = JSON.parse(localStorage.getItem('roomCheckList')) || [
       { id: '101', completed: true, worker: '山田', completedAt: '09/27 10:15', memo: '傷なし' },
@@ -271,7 +284,7 @@
               : '<span class="badge-uncompleted">未完了</span>'}
           </td>
           <td>
-            <input type="text" class="memo-input" value="${room.memo || ''}" placeholder="メモ..." onchange="updateMemo(${index}, this.value)" />
+            <input type="text" class="memo-input" value="${room.memo || ''}" placeholder="メモ..." onchange="updateMemo(${index}, this.value)" onkeydown="handleMemoEnter(event)" />
           </td>
           <td>
             <button class="action-btn ${room.completed ? 'btn-reset' : 'btn-toggle'}" onclick="toggleStatus(${index})">
@@ -289,6 +302,12 @@
     function updateMemo(index, value) {
       rooms[index].memo = value;
       localStorage.setItem('roomCheckList', JSON.stringify(rooms));
+    }
+
+    function handleMemoEnter(event) {
+      if (event.key === 'Enter') {
+        event.target.blur(); // メモ入力中にEnterでフォーカスを外して確定させる
+      }
     }
 
     function addRoom(customRoomId) {
@@ -370,7 +389,6 @@
 
         // 判定処理
         if (transcript.includes('未完了') || transcript.includes('戻す') || transcript.includes('キャンセル')) {
-          // 未完了にする
           let index = rooms.findIndex(r => r.id === roomNum);
           if (index !== -1) {
             toggleStatus(index, false);
@@ -378,7 +396,6 @@
             alert(`${roomNum}号室が見つかりません`);
           }
         } else if (transcript.includes('完了') || transcript.includes('おわり') || transcript.includes('済')) {
-          // 完了にする（無ければ追加してから完了）
           let index = rooms.findIndex(r => r.id === roomNum);
           if (index === -1) {
             addRoom(roomNum);
@@ -388,7 +405,6 @@
             toggleStatus(index, true);
           }
         } else {
-          // 単に数字や「101追加」と話した場合は追加
           document.getElementById('roomInput').value = roomNum;
           addRoom(roomNum);
         }
