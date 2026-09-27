@@ -23,22 +23,42 @@
       display: flex;
       gap: 10px;
       align-items: center;
+      flex-wrap: wrap;
     }
     input[type="text"] {
-      padding: 8px 12px;
+      padding: 10px;
       font-size: 1rem;
       border: 1px solid #ccc;
       border-radius: 4px;
-      width: 140px;
+      width: 130px;
     }
     button.add-btn {
-      padding: 8px 16px;
+      padding: 10px 16px;
       font-size: 1rem;
       background-color: #007bff;
       color: white;
       border: none;
       border-radius: 4px;
       cursor: pointer;
+    }
+    /* 音声入力ボタンのスタイル */
+    button.voice-btn {
+      padding: 10px 14px;
+      font-size: 1rem;
+      background-color: #28a745;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button.voice-btn.recording {
+      background-color: #dc3545;
+      animation: pulse 1s infinite;
+    }
+    @keyframes pulse {
+      0% { opacity: 1; }
+      50% { opacity: 0.5; }
+      100% { opacity: 1; }
     }
     table {
       width: 100%;
@@ -103,6 +123,8 @@
 
   <div class="form-container">
     <input type="text" id="roomInput" placeholder="部屋番号 (例: 101)" />
+    <!-- 🎤 音声入力ボタン -->
+    <button id="voiceBtn" class="voice-btn" onclick="startVoiceInput()">🎤 声で入力</button>
     <button class="add-btn" onclick="addRoom()">追加</button>
   </div>
 
@@ -158,9 +180,9 @@
       localStorage.setItem('roomCheckList', JSON.stringify(rooms));
     }
 
-    function addRoom() {
+    function addRoom(customRoomId) {
       const input = document.getElementById('roomInput');
-      const roomId = input.value.trim();
+      const roomId = customRoomId || input.value.trim();
 
       if (!roomId) {
         alert('部屋番号を入力してください');
@@ -187,6 +209,55 @@
         rooms.splice(index, 1);
         renderTable();
       }
+    }
+
+    // 🎤 音声認識の処理
+    function startVoiceInput() {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        alert('お使いのブラウザは音声認識に対応していません。');
+        return;
+      }
+
+      const recognition = new SpeechRecognition();
+      recognition.lang = 'ja-JP';
+      const voiceBtn = document.getElementById('voiceBtn');
+
+      recognition.onstart = () => {
+        voiceBtn.textContent = '🎙️ 話してください...';
+        voiceBtn.classList.add('recording');
+      };
+
+      recognition.onresult = (event) => {
+        let transcript = event.results[0][0].transcript;
+        // 「101号室」や「101番」と話しても「101」だけに数字変換・抽出
+        let cleanText = transcript.replace(/[^0-9]/g, '');
+        if (!cleanText) {
+          cleanText = transcript.trim();
+        }
+
+        document.getElementById('roomInput').value = cleanText;
+        voiceBtn.textContent = '🎤 声で入力';
+        voiceBtn.classList.remove('recording');
+
+        // 音声認識されたら自動で追加
+        if (cleanText) {
+          addRoom(cleanText);
+        }
+      };
+
+      recognition.onerror = () => {
+        alert('音声が聞き取れませんでした。もう一度お試しください。');
+        voiceBtn.textContent = '🎤 声で入力';
+        voiceBtn.classList.remove('recording');
+      };
+
+      recognition.onend = () => {
+        voiceBtn.textContent = '🎤 声で入力';
+        voiceBtn.classList.remove('recording');
+      };
+
+      recognition.start();
     }
 
     renderTable();
