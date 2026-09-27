@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -15,7 +14,6 @@
       font-size: 1.2rem;
       color: #333;
     }
-    /* 入力フォームのスタイル */
     .form-container {
       background: white;
       padding: 15px;
@@ -42,7 +40,6 @@
       border-radius: 4px;
       cursor: pointer;
     }
-    /* Excel風の表スタイル */
     table {
       width: 100%;
       border-collapse: collapse;
@@ -60,13 +57,12 @@
       color: #495057;
       font-weight: bold;
     }
-    /* 行の状態ごとの色分け */
     tr.status-uncompleted {
-      background-color: #ffe6e6; /* 未完了：目立つ赤系統の背景 */
+      background-color: #ffe6e6;
       font-weight: bold;
     }
     tr.status-completed {
-      background-color: #e6ffed; /* 完了：薄い緑系統の背景 */
+      background-color: #e6ffed;
       color: #666;
     }
     .badge-uncompleted {
@@ -105,13 +101,11 @@
 
   <h1>部屋番号チェックシート</h1>
 
-  <!-- 新規追加フォーム -->
   <div class="form-container">
     <input type="text" id="roomInput" placeholder="部屋番号 (例: 101)" />
     <button class="add-btn" onclick="addRoom()">追加</button>
   </div>
 
-  <!-- 表表示エリア -->
   <table>
     <thead>
       <tr>
@@ -121,33 +115,27 @@
       </tr>
     </thead>
     <tbody id="roomTableBody">
-      <!-- ここに動的に行が追加されます -->
     </tbody>
   </table>
 
   <script>
-    // データ初期化（ローカルストレージから取得、無ければサンプルデータ）
     let rooms = JSON.parse(localStorage.getItem('roomCheckList')) || [
       { id: '101', completed: false },
       { id: '102', completed: true },
       { id: '201', completed: false }
     ];
 
-    // 数字混じりの部屋番号をきれいに並べ替える比較関数（昇順）
     function sortRooms() {
       rooms.sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true, sensitivity: 'base' }));
     }
 
-    // 画面の表を更新する関数
     function renderTable() {
-      sortRooms(); // 毎回昇順に並び替え
+      sortRooms();
       const tbody = document.getElementById('roomTableBody');
       tbody.innerHTML = '';
 
       rooms.forEach((room, index) => {
         const tr = document.createElement('tr');
-        
-        // 未完了（やってない）部分は目立つ背景色を付与
         tr.className = room.completed ? 'status-completed' : 'status-uncompleted';
 
         tr.innerHTML = `
@@ -167,11 +155,9 @@
         tbody.appendChild(tr);
       });
 
-      // ブラウザにデータを一時保存
       localStorage.setItem('roomCheckList', JSON.stringify(rooms));
     }
 
-    // 部屋番号を追加
     function addRoom() {
       const input = document.getElementById('roomInput');
       const roomId = input.value.trim();
@@ -181,7 +167,6 @@
         return;
       }
 
-      // 重複チェック
       if (rooms.some(r => r.id === roomId)) {
         alert('その部屋番号は既に追加されています');
         return;
@@ -189,16 +174,14 @@
 
       rooms.push({ id: roomId, completed: false });
       input.value = '';
-      renderTable(); // 並び替えて再描画
+      renderTable();
     }
 
-    // 完了 / 未完了の切り替え
     function toggleStatus(index) {
       rooms[index].completed = !rooms[index].completed;
       renderTable();
     }
 
-    // 部屋の削除
     function deleteRoom(index) {
       if (confirm(`${rooms[index].id}号室を削除しますか？`)) {
         rooms.splice(index, 1);
@@ -206,7 +189,6 @@
       }
     }
 
-    // 初期表示
     renderTable();
   </script>
 </body>
