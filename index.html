@@ -7,44 +7,84 @@
   <style>
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      margin: 15px;
+      margin: 12px;
       background-color: #f8f9fa;
     }
     h1 {
-      font-size: 1.2rem;
+      font-size: 1.3rem;
       color: #333;
+      margin-bottom: 15px;
+    }
+    .header-setting {
+      background: #ffffff;
+      padding: 12px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+      margin-bottom: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .input-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .input-group label {
+      font-weight: bold;
+      font-size: 0.9rem;
+      white-space: nowrap;
+      width: 65px;
     }
     .form-container {
       background: white;
-      padding: 15px;
+      padding: 12px;
       border-radius: 8px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-      margin-bottom: 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+      margin-bottom: 15px;
       display: flex;
-      gap: 10px;
+      gap: 8px;
       align-items: center;
       flex-wrap: wrap;
     }
     input[type="text"] {
-      padding: 10px;
-      font-size: 1rem;
+      padding: 8px 10px;
+      font-size: 0.95rem;
       border: 1px solid #ccc;
       border-radius: 4px;
-      width: 130px;
+      box-sizing: border-box;
+    }
+    #siteNameInput {
+      flex: 1;
+      font-weight: bold;
+    }
+    #userNameInput {
+      width: 140px;
+    }
+    #roomInput {
+      width: 110px;
+    }
+    .memo-input {
+      width: 100%;
+      padding: 4px 6px;
+      font-size: 0.85rem;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      box-sizing: border-box;
+      margin-top: 4px;
     }
     button.add-btn {
-      padding: 10px 16px;
-      font-size: 1rem;
+      padding: 8px 14px;
+      font-size: 0.95rem;
       background-color: #007bff;
       color: white;
       border: none;
       border-radius: 4px;
       cursor: pointer;
     }
-    /* 音声入力ボタンのスタイル */
     button.voice-btn {
-      padding: 10px 14px;
-      font-size: 1rem;
+      padding: 8px 12px;
+      font-size: 0.95rem;
       background-color: #28a745;
       color: white;
       border: none;
@@ -64,13 +104,13 @@
       width: 100%;
       border-collapse: collapse;
       background: white;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.08);
     }
     th, td {
       border: 1px solid #dcdcdc;
-      padding: 10px;
+      padding: 8px 6px;
       text-align: center;
-      font-size: 0.95rem;
+      font-size: 0.85rem;
     }
     th {
       background-color: #e9ecef;
@@ -79,61 +119,92 @@
     }
     tr.status-uncompleted {
       background-color: #ffe6e6;
-      font-weight: bold;
     }
     tr.status-completed {
       background-color: #e6ffed;
-      color: #666;
     }
     .badge-uncompleted {
       color: #d9534f;
       background: #fdf7f7;
-      padding: 4px 8px;
+      padding: 3px 6px;
       border-radius: 4px;
       border: 1px solid #d9534f;
+      font-weight: bold;
+      display: inline-block;
     }
     .badge-completed {
       color: #28a745;
       background: #f4fff6;
-      padding: 4px 8px;
+      padding: 3px 6px;
       border-radius: 4px;
       border: 1px solid #28a745;
+      font-weight: bold;
+      display: inline-block;
+    }
+    .meta-info {
+      font-size: 0.75rem;
+      color: #555;
+      margin-top: 3px;
     }
     .action-btn {
-      padding: 6px 12px;
+      padding: 5px 8px;
       border: none;
       border-radius: 4px;
       cursor: pointer;
-      font-size: 0.85rem;
+      font-size: 0.8rem;
     }
     .btn-toggle {
+      background-color: #007bff;
+      color: white;
+    }
+    .btn-reset {
       background-color: #6c757d;
       color: white;
     }
     .btn-delete {
       background-color: #dc3545;
       color: white;
-      margin-left: 5px;
+      margin-top: 4px;
+    }
+    .voice-guide {
+      font-size: 0.75rem;
+      color: #666;
+      width: 100%;
+      margin-top: 2px;
     }
   </style>
 </head>
 <body>
 
-  <h1>部屋番号チェックシート</h1>
+  <h1 id="titleDisplay">🏢 現場チェックシート</h1>
 
+  <!-- 🏢 現場名 & 👤 作業者名 -->
+  <div class="header-setting">
+    <div class="input-group">
+      <label for="siteNameInput">現場名:</label>
+      <input type="text" id="siteNameInput" placeholder="例: 〇〇マンション新築工事" oninput="saveHeaderInfo()" />
+    </div>
+    <div class="input-group">
+      <label for="userNameInput">作業者:</label>
+      <input type="text" id="userNameInput" placeholder="例: 山田" oninput="saveHeaderInfo()" />
+    </div>
+  </div>
+
+  <!-- 部屋追加 & 音声入力フォーム -->
   <div class="form-container">
-    <input type="text" id="roomInput" placeholder="部屋番号 (例: 101)" />
-    <!-- 🎤 音声入力ボタン -->
-    <button id="voiceBtn" class="voice-btn" onclick="startVoiceInput()">🎤 声で入力</button>
+    <input type="text" id="roomInput" placeholder="部屋 (例: 101)" />
+    <button id="voiceBtn" class="voice-btn" onclick="startVoiceInput()">🎤 声で操作</button>
     <button class="add-btn" onclick="addRoom()">追加</button>
+    <div class="voice-guide">💡 音声例: 「101追加」「101完了」「101未完了」</div>
   </div>
 
   <table>
     <thead>
       <tr>
-        <th>部屋番号</th>
-        <th>ステータス</th>
-        <th>操作</th>
+        <th style="width: 25%;">部屋番号</th>
+        <th style="width: 30%;">状況 / 担当・日時</th>
+        <th style="width: 30%;">メモ</th>
+        <th style="width: 15%;">操作</th>
       </tr>
     </thead>
     <tbody id="roomTableBody">
@@ -141,14 +212,45 @@
   </table>
 
   <script>
+    // ヘッダー情報の初期設定
+    let siteName = localStorage.getItem('siteName') || '';
+    let currentWorker = localStorage.getItem('workerName') || '';
+
+    document.getElementById('siteNameInput').value = siteName;
+    document.getElementById('userNameInput').value = currentWorker;
+    updateTitle();
+
+    function saveHeaderInfo() {
+      siteName = document.getElementById('siteNameInput').value.trim();
+      currentWorker = document.getElementById('userNameInput').value.trim();
+      localStorage.setItem('siteName', siteName);
+      localStorage.setItem('workerName', currentWorker);
+      updateTitle();
+    }
+
+    function updateTitle() {
+      const titleElem = document.getElementById('titleDisplay');
+      titleElem.textContent = siteName ? `🏢 ${siteName}` : '🏢 現場チェックシート';
+    }
+
+    // データ初期化
     let rooms = JSON.parse(localStorage.getItem('roomCheckList')) || [
-      { id: '101', completed: false },
-      { id: '102', completed: true },
-      { id: '201', completed: false }
+      { id: '101', completed: true, worker: '山田', completedAt: '09/27 10:15', memo: '傷なし' },
+      { id: '102', completed: false, worker: '', completedAt: '', memo: '' },
+      { id: '201', completed: false, worker: '', completedAt: '', memo: '' }
     ];
 
     function sortRooms() {
       rooms.sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true, sensitivity: 'base' }));
+    }
+
+    function getNowFormatted() {
+      const now = new Date();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const date = String(now.getDate()).padStart(2, '0');
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      return `${month}/${date} ${hours}:${minutes}`;
     }
 
     function renderTable() {
@@ -164,19 +266,28 @@
           <td><strong>${room.id}号室</strong></td>
           <td>
             ${room.completed 
-              ? '<span class="badge-completed">完了</span>' 
-              : '<span class="badge-uncompleted">未完了（未施工）</span>'}
+              ? `<span class="badge-completed">完了</span>
+                 <div class="meta-info">👤 ${room.worker \vert{}\vert{} '担当者'}<br>🕒 ${room.completedAt || '-'}</div>` 
+              : '<span class="badge-uncompleted">未完了</span>'}
           </td>
           <td>
-            <button class="action-btn btn-toggle" onclick="toggleStatus(${index})">
-              ${room.completed ? '未完了に戻す' : '完了にする'}
-            </button>
+            <input type="text" class="memo-input" value="${room.memo || ''}" placeholder="メモ..." onchange="updateMemo(${index}, this.value)" />
+          </td>
+          <td>
+            <button class="action-btn ${room.completed ? 'btn-reset' : 'btn-toggle'}" onclick="toggleStatus(${index})">
+              ${room.completed ? '戻す' : '完了'}
+            </button><br>
             <button class="action-btn btn-delete" onclick="deleteRoom(${index})">削除</button>
           </td>
         `;
         tbody.appendChild(tr);
       });
 
+      localStorage.setItem('roomCheckList', JSON.stringify(rooms));
+    }
+
+    function updateMemo(index, value) {
+      rooms[index].memo = value;
       localStorage.setItem('roomCheckList', JSON.stringify(rooms));
     }
 
@@ -194,13 +305,29 @@
         return;
       }
 
-      rooms.push({ id: roomId, completed: false });
+      rooms.push({ id: roomId, completed: false, worker: '', completedAt: '', memo: '' });
       input.value = '';
       renderTable();
     }
 
-    function toggleStatus(index) {
-      rooms[index].completed = !rooms[index].completed;
+    function toggleStatus(index, forceStatus) {
+      saveHeaderInfo();
+      const room = rooms[index];
+
+      if (forceStatus !== undefined) {
+        room.completed = forceStatus;
+      } else {
+        room.completed = !room.completed;
+      }
+
+      if (room.completed) {
+        room.worker = currentWorker || '担当者';
+        room.completedAt = getNowFormatted();
+      } else {
+        room.worker = '';
+        room.completedAt = '';
+      }
+
       renderTable();
     }
 
@@ -211,7 +338,7 @@
       }
     }
 
-    // 🎤 音声認識の処理
+    // 🎤 音声認識の強化処理（追加・完了・未完了を判別）
     function startVoiceInput() {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (!SpeechRecognition) {
@@ -230,30 +357,51 @@
 
       recognition.onresult = (event) => {
         let transcript = event.results[0][0].transcript;
-        // 「101号室」や「101番」と話しても「101」だけに数字変換・抽出
-        let cleanText = transcript.replace(/[^0-9]/g, '');
-        if (!cleanText) {
-          cleanText = transcript.trim();
-        }
-
-        document.getElementById('roomInput').value = cleanText;
-        voiceBtn.textContent = '🎤 声で入力';
+        voiceBtn.textContent = '🎤 声で操作';
         voiceBtn.classList.remove('recording');
 
-        // 音声認識されたら自動で追加
-        if (cleanText) {
-          addRoom(cleanText);
+        // 数字（部屋番号）を抽出
+        let roomNum = transcript.replace(/[^0-9]/g, '');
+
+        if (!roomNum) {
+          alert(`部屋番号を読み取れませんでした: 「${transcript}」`);
+          return;
+        }
+
+        // 判定処理
+        if (transcript.includes('未完了') || transcript.includes('戻す') || transcript.includes('キャンセル')) {
+          // 未完了にする
+          let index = rooms.findIndex(r => r.id === roomNum);
+          if (index !== -1) {
+            toggleStatus(index, false);
+          } else {
+            alert(`${roomNum}号室が見つかりません`);
+          }
+        } else if (transcript.includes('完了') || transcript.includes('おわり') || transcript.includes('済')) {
+          // 完了にする（無ければ追加してから完了）
+          let index = rooms.findIndex(r => r.id === roomNum);
+          if (index === -1) {
+            addRoom(roomNum);
+            index = rooms.findIndex(r => r.id === roomNum);
+          }
+          if (index !== -1) {
+            toggleStatus(index, true);
+          }
+        } else {
+          // 単に数字や「101追加」と話した場合は追加
+          document.getElementById('roomInput').value = roomNum;
+          addRoom(roomNum);
         }
       };
 
       recognition.onerror = () => {
-        alert('音声が聞き取れませんでした。もう一度お試しください。');
-        voiceBtn.textContent = '🎤 声で入力';
+        alert('音声が聞き取れませんでした。');
+        voiceBtn.textContent = '🎤 声で操作';
         voiceBtn.classList.remove('recording');
       };
 
       recognition.onend = () => {
-        voiceBtn.textContent = '🎤 声で入力';
+        voiceBtn.textContent = '🎤 声で操作';
         voiceBtn.classList.remove('recording');
       };
 
