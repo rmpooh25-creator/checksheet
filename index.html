@@ -11,10 +11,22 @@
     .header-setting { background: #ffffff; padding: 12px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.08); margin-bottom: 12px; display: flex; flex-direction: column; gap: 10px; }
     .input-group { display: flex; align-items: center; gap: 8px; }
     .input-group label { font-weight: bold; font-size: 0.9rem; white-space: nowrap; width: 65px; }
-    input[type="text"] { padding: 8px 10px; font-size: 0.95rem; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; width: 100%; }
+    input[type="text"], input[type="number"] { padding: 8px 10px; font-size: 0.95rem; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
     
-    .form-container { background: white; padding: 12px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.08); margin-bottom: 15px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-    #roomInput { width: 160px; }
+    .form-container { background: white; padding: 12px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.08); margin-bottom: 12px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    
+    /* マトリクス一括入力エリア */
+    .matrix-container { background: #eef5ff; padding: 12px; border-radius: 8px; border: 1px solid #cce5ff; margin-bottom: 15px; }
+    .matrix-title { font-size: 0.95rem; font-weight: bold; color: #004085; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+    .matrix-controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; font-size: 0.85rem; }
+    .matrix-controls input { width: 60px; }
+    .matrix-scroll { overflow-x: auto; max-width: 100%; border: 1px solid #b8daff; border-radius: 6px; background: white; margin-bottom: 10px; }
+    .matrix-table { width: 100%; border-collapse: collapse; text-align: center; font-size: 0.8rem; }
+    .matrix-table th, .matrix-table td { border: 1px solid #d6e9f8; padding: 6px 8px; white-space: nowrap; }
+    .matrix-table th { background: #d0e1fd; color: #004085; }
+    .matrix-btn { background-color: #17a2b8; color: white; border: none; padding: 8px 14px; border-radius: 4px; font-size: 0.9rem; font-weight: bold; cursor: pointer; width: 100%; }
+
+    #roomInput { width: 140px; }
     .memo-input { width: 100%; padding: 4px 6px; font-size: 0.85rem; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; margin-top: 4px; }
     
     button.add-btn { padding: 8px 14px; font-size: 0.95rem; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
@@ -26,9 +38,9 @@
     .bulk-actions { margin-bottom: 8px; display: flex; gap: 10px; align-items: center; }
     .btn-bulk-delete { background-color: #dc3545; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-size: 0.85rem; font-weight: bold; cursor: pointer; }
 
-    table { width: 100%; border-collapse: collapse; background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.08); }
-    th, td { border: 1px solid #dcdcdc; padding: 8px 6px; text-align: center; font-size: 0.85rem; }
-    th { background-color: #e9ecef; color: #495057; font-weight: bold; }
+    table.main-table { width: 100%; border-collapse: collapse; background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.08); }
+    table.main-table th, table.main-table td { border: 1px solid #dcdcdc; padding: 8px 6px; text-align: center; font-size: 0.85rem; }
+    table.main-table th { background-color: #e9ecef; color: #495057; font-weight: bold; }
     
     /* 赤と緑の背景設定 */
     tr.status-uncompleted { background-color: #ffe6e6 !important; }
@@ -65,6 +77,27 @@
     </div>
   </div>
 
+  <!-- 縦軸・横軸 マトリクス一括生成エリア -->
+  <div class="matrix-container">
+    <div class="matrix-title">
+      <span>🏢 階数・部屋指定 一括作成（マトリクス選択）</span>
+    </div>
+    <div class="matrix-controls">
+      <label>最上階:</label>
+      <input type="number" id="matrixFloors" value="15" min="1" max="99" onchange="generateMatrixGrid()" /> <label>階</label>
+      <label style="margin-left: 10px;">各階最大:</label>
+      <input type="number" id="matrixRooms" value="8" min="1" max="99" onchange="generateMatrixGrid()" /> <label>号室</label>
+    </div>
+    
+    <div class="matrix-scroll">
+      <table class="matrix-table" id="matrixTable">
+        <!-- JSで動的生成 -->
+      </table>
+    </div>
+    
+    <button class="matrix-btn" onclick="addSelectedMatrixRooms()">チェックした部屋を一括作成</button>
+  </div>
+
   <div class="form-container">
     <input type="text" id="roomInput" placeholder="例: 101 または 101-105" />
     <button class="add-btn" onclick="addRoom()">追加</button>
@@ -75,7 +108,7 @@
     <button class="btn-bulk-delete" onclick="deleteSelectedRooms()">🗑️ 選択した部屋を削除</button>
   </div>
 
-  <table>
+  <table class="main-table">
     <thead>
       <tr>
         <th style="width: 8%;"><input type="checkbox" id="selectAll" onclick="toggleSelectAll(this)" /></th>
@@ -196,6 +229,70 @@
       if (shouldSave) saveDataToCloud();
     }
 
+    /* マトリクス（縦軸・横軸）グリッドの生成 */
+    function generateMatrixGrid() {
+      const floors = parseInt(document.getElementById('matrixFloors').value, 10) || 1;
+      const rooms = parseInt(document.getElementById('matrixRooms').value, 10) || 1;
+      const table = document.getElementById('matrixTable');
+      table.innerHTML = '';
+
+      // ヘッダー（横軸：部屋番号 01, 02... & 全選択）
+      let headerTr = document.createElement('tr');
+      headerTr.innerHTML = `<th><input type="checkbox" onchange="toggleMatrixAll(this)"> 全選択</th>`;
+      for (let r = 1; r <= rooms; r++) {
+        const colNum = String(r).padStart(2, '0');
+        headerTr.innerHTML += `<th>${colNum}号列<br><input type="checkbox" onchange="toggleMatrixCol(${r}, this.checked)"></th>`;
+      }
+      table.appendChild(headerTr);
+
+      // 各階（縦軸：階数 15階〜1階）
+      for (let f = floors; f >= 1; f--) {
+        let tr = document.createElement('tr');
+        tr.innerHTML = `<th>${f}階 <input type="checkbox" onchange="toggleMatrixRow(${f}, this.checked)"></th>`;
+        for (let r = 1; r <= rooms; r++) {
+          const roomNum = `${f}${String(r).padStart(2, '0')}`;
+          tr.innerHTML += `<td><label><input type="checkbox" class="matrix-cb" data-floor="${f}" data-col="${r}" value="${roomNum}"> ${roomNum}</label></td>`;
+        }
+        table.appendChild(tr);
+      }
+    }
+
+    function toggleMatrixAll(master) {
+      document.querySelectorAll('.matrix-cb').forEach(cb => cb.checked = master.checked);
+    }
+
+    function toggleMatrixRow(floor, checked) {
+      document.querySelectorAll(`.matrix-cb[data-floor="${floor}"]`).forEach(cb => cb.checked = checked);
+    }
+
+    function toggleMatrixCol(col, checked) {
+      document.querySelectorAll(`.matrix-cb[data-col="${col}"]`).forEach(cb => cb.checked = checked);
+    }
+
+    function addSelectedMatrixRooms() {
+      const selected = document.querySelectorAll('.matrix-cb:checked');
+      if (selected.length === 0) {
+        alert('追加したい部屋にチェックを入れてください。');
+        return;
+      }
+
+      let addedCount = 0;
+      selected.forEach(cb => {
+        const roomId = cb.value;
+        if (!appData.rooms.some(r => r.id === roomId)) {
+          appData.rooms.push({ id: roomId, completed: false, worker: '', completedAt: '', memo: '' });
+          addedCount++;
+        }
+      });
+
+      if (addedCount > 0) {
+        alert(`${addedCount} 件の部屋を一括作成しました！`);
+        renderTable();
+      } else {
+        alert('選択された部屋はすべて既に追加されています。');
+      }
+    }
+
     function toggleSelectAll(master) {
       const checkboxes = document.querySelectorAll('.room-checkbox');
       checkboxes.forEach(cb => cb.checked = master.checked);
@@ -226,14 +323,12 @@
       saveDataToCloud();
     }
 
-    // 部屋追加（1室・範囲入力の両方に対応）
     function addRoom(customRoomStr) {
       const input = document.getElementById('roomInput');
       const rawInput = customRoomStr || input.value.trim();
 
       if (!rawInput) { alert('部屋番号を入力してください'); return; }
 
-      // ハイフン（- や 〜 や〜）で範囲指定されているか判定
       const rangeMatch = rawInput.match(/^(\d+)[〜\-~～](\d+)$/);
 
       let addedCount = 0;
@@ -247,7 +342,7 @@
           return;
         }
 
-        const digits = rangeMatch[1].length; // 桁数（例: 101なら3桁）
+        const digits = rangeMatch[1].length;
 
         for (let i = start; i <= end; i++) {
           const roomId = String(i).padStart(digits, '0');
@@ -324,7 +419,6 @@
         let transcript = event.results[0][0].transcript;
         resetVoiceBtn();
 
-        // 音声での範囲指定（例: 101から105）の検出
         const rangeVoiceMatch = transcript.match(/(\d+)\s*(?:から|〜|-|~)\s*(\d+)/);
 
         if (rangeVoiceMatch) {
@@ -358,6 +452,7 @@
       voiceBtn.classList.remove('recording');
     }
 
+    generateMatrixGrid();
     loadDataFromCloud();
     setInterval(loadDataFromCloud, 5000);
   </script>
