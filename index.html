@@ -15,9 +15,15 @@
     
     .form-container { background: white; padding: 12px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.08); margin-bottom: 12px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
     
-    /* マトリクス一括入力エリア */
-    .matrix-container { background: #eef5ff; padding: 12px; border-radius: 8px; border: 1px solid #cce5ff; margin-bottom: 15px; }
-    .matrix-title { font-size: 0.95rem; font-weight: bold; color: #004085; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+    /* 折りたたみ付きマトリクス一括入力エリア */
+    details.matrix-container { background: #eef5ff; border-radius: 8px; border: 1px solid #cce5ff; margin-bottom: 15px; padding: 10px 12px; }
+    details.matrix-container[open] { padding-bottom: 12px; }
+    summary.matrix-summary { font-size: 0.95rem; font-weight: bold; color: #004085; cursor: pointer; outline: none; list-style: none; user-select: none; display: flex; justify-content: space-between; align-items: center; }
+    summary.matrix-summary::-webkit-details-marker { display: none; }
+    summary.matrix-summary::after { content: "▼"; font-size: 0.8rem; margin-left: 8px; transition: transform 0.2s; }
+    details[open] summary.matrix-summary::after { transform: rotate(180deg); }
+
+    .matrix-content { margin-top: 10px; }
     .matrix-controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; font-size: 0.85rem; }
     .matrix-controls input { width: 60px; }
     .matrix-scroll { overflow-x: auto; max-width: 100%; border: 1px solid #b8daff; border-radius: 6px; background: white; margin-bottom: 10px; }
@@ -77,26 +83,26 @@
     </div>
   </div>
 
-  <!-- 縦軸・横軸 マトリクス一括生成エリア -->
-  <div class="matrix-container">
-    <div class="matrix-title">
-      <span>🏢 階数・部屋指定 一括作成（マトリクス選択）</span>
+  <!-- 折りたたみ可能なマトリクス一括入力エリア -->
+  <details class="matrix-container">
+    <summary class="matrix-summary">🏢 階数・部屋指定 一括作成（マトリクス選択）</summary>
+    <div class="matrix-content">
+      <div class="matrix-controls">
+        <label>最上階:</label>
+        <input type="number" id="matrixFloors" value="15" min="1" max="99" onchange="generateMatrixGrid()" /> <label>階</label>
+        <label style="margin-left: 10px;">各階最大:</label>
+        <input type="number" id="matrixRooms" value="8" min="1" max="99" onchange="generateMatrixGrid()" /> <label>号室</label>
+      </div>
+      
+      <div class="matrix-scroll">
+        <table class="matrix-table" id="matrixTable">
+          <!-- JSで動的生成 -->
+        </table>
+      </div>
+      
+      <button class="matrix-btn" onclick="addSelectedMatrixRooms()">チェックした部屋を一括作成</button>
     </div>
-    <div class="matrix-controls">
-      <label>最上階:</label>
-      <input type="number" id="matrixFloors" value="15" min="1" max="99" onchange="generateMatrixGrid()" /> <label>階</label>
-      <label style="margin-left: 10px;">各階最大:</label>
-      <input type="number" id="matrixRooms" value="8" min="1" max="99" onchange="generateMatrixGrid()" /> <label>号室</label>
-    </div>
-    
-    <div class="matrix-scroll">
-      <table class="matrix-table" id="matrixTable">
-        <!-- JSで動的生成 -->
-      </table>
-    </div>
-    
-    <button class="matrix-btn" onclick="addSelectedMatrixRooms()">チェックした部屋を一括作成</button>
-  </div>
+  </details>
 
   <div class="form-container">
     <input type="text" id="roomInput" placeholder="例: 101 または 101-105" />
