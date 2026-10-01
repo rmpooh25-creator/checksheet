@@ -8,11 +8,16 @@
     * { box-sizing: border-box; }
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 12px; background-color: #f8f9fa; color: #333; }
     h1 { font-size: 1.3rem; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; }
+    
     .header-setting { background: #ffffff; padding: 12px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.08); margin-bottom: 12px; display: flex; flex-direction: column; gap: 10px; }
     .input-group { display: flex; align-items: center; gap: 8px; }
     .input-group label { font-weight: bold; font-size: 0.9rem; white-space: nowrap; width: 65px; }
-    input[type="text"], input[type="number"] { padding: 8px 10px; font-size: 0.95rem; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+    input[type="text"], input[type="number"], select { padding: 8px 10px; font-size: 0.95rem; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+    select { background-color: #fff; width: 100%; font-weight: bold; }
     
+    .btn-site-add { background-color: #28a745; color: white; border: none; padding: 8px 12px; border-radius: 4px; font-size: 0.85rem; font-weight: bold; cursor: pointer; white-space: nowrap; }
+    .btn-site-del { background-color: #dc3545; color: white; border: none; padding: 8px 12px; border-radius: 4px; font-size: 0.85rem; font-weight: bold; cursor: pointer; white-space: nowrap; }
+
     .form-container { background: white; padding: 12px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.08); margin-bottom: 12px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
     
     /* 折りたたみ付きマトリクス一括入力エリア */
@@ -74,12 +79,16 @@
 
   <div class="header-setting">
     <div class="input-group">
-      <label for="siteNameInput">現場名:</label>
-      <input type="text" id="siteNameInput" placeholder="例: 〇〇マンション新築工事" onchange="saveHeaderInfo()" />
+      <label for="siteSelect">現場選択:</label>
+      <select id="siteSelect" onchange="changeSite()">
+        <option value="">-- 現場を選択 --</option>
+      </select>
+      <button class="btn-site-add" onclick="createNewSite()">＋ 新規現場</button>
+      <button class="btn-site-del" onclick="deleteCurrentSite()">🗑️ 削除</button>
     </div>
     <div class="input-group">
       <label for="userNameInput">作業者:</label>
-      <input type="text" id="userNameInput" placeholder="例: 山田" onchange="saveHeaderInfo()" />
+      <input type="text" id="userNameInput" placeholder="例: 山田" onchange="saveWorkerName()" />
     </div>
   </div>
 
@@ -131,7 +140,12 @@
   <script>
     const GAS_URL = "https://script.google.com/macros/s/AKfycbwuX2TJnnkoBtu-5TYnfdPGwDnp9SgJuQCvkamiQBMWTNuq8UpQtD_eKUfoYuBe5mg65A/exec";
 
-    let appData = { siteName: '', rooms: [] };
+    // アプリ全体のデータ構造（複数現場対応）
+    let storeData = {
+      currentSiteId: "",
+      sites: [] // { id: "167...", siteName: "〇〇マンション", rooms: [...] }
+    };
+
     let currentWorker = localStorage.getItem('workerName') || '';
     document.getElementById('userNameInput').value = currentWorker;
 
@@ -145,21 +159,88 @@
       return `${mm}/${dd} ${hh}:${min}`;
     }
 
-    function updateTitle() {
-      document.getElementById('titleDisplay').textContent = appData.siteName ? `🏢 ${appData.siteName}` : '🏢 現場チェックシート';
-      document.getElementById('siteNameInput').value = appData.siteName || '';
-    }
-
-    function saveHeaderInfo() {
-      appData.siteName = document.getElementById('siteNameInput').value.trim();
+    function saveWorkerName() {
       currentWorker = document.getElementById('userNameInput').value.trim();
       localStorage.setItem('workerName', currentWorker);
-      updateTitle();
+    }
+
+    function getCurrentSite() {
+      if (!storeData.sites || storeData.sites.length === 0) return null;
+      return storeData.sites.find(s => s.id === storeData.currentSiteId) || storeData.sites[0];
+    }
+
+    function updateSiteDropdown() {
+      const select = document.getElementById('siteSelect');
+      select.innerHTML = '';
+
+      if (!storeData.sites || storeData.sites.length === 0) {
+        select.innerHTML = '<option value="">-- 現場がありません --</option>';
+        document.getElementById('titleDisplay').textContent = '🏢 現場チェックシート';
+        return;
+      }
+
+      storeData.sites.forEach(site => {
+        const opt = document.createElement('option');
+        opt.value = site.id;
+        opt.textContent = site.siteName;
+        if (site.id === storeData.currentSiteId) opt.selected = true;
+        select.appendChild(opt);
+      });
+
+      const currentSite = getCurrentSite();
+      if (currentSite) {
+        storeData.currentSiteId = currentSite.id;
+        document.getElementById('titleDisplay').textContent = `🏢 ${currentSite.siteName}`;
+      }
+    }
+
+    function createNewSite() {
+      const name = prompt('新しい現場名を入力してください:');
+      if (!name || !name.trim()) return;
+
+      const newSite = {
+        id: "site_" + Date.now(),
+        siteName: name.trim(),
+        rooms: []
+      };
+
+      if (!storeData.sites) storeData.sites = [];
+      storeData.sites.push(newSite);
+      storeData.currentSiteId = newSite.id;
+
+      updateSiteDropdown();
+      renderTable();
+    }
+
+    function changeSite() {
+      const select = document.getElementById('siteSelect');
+      storeData.currentSiteId = select.value;
+      const currentSite = getCurrentSite();
+      if (currentSite) {
+        document.getElementById('titleDisplay').textContent = `🏢 ${currentSite.siteName}`;
+      }
+      renderTable(false);
       saveDataToCloud();
     }
 
-    function sortRooms() {
-      appData.rooms.sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true, sensitivity: 'base' }));
+    function deleteCurrentSite() {
+      const currentSite = getCurrentSite();
+      if (!currentSite) {
+        alert('削除対象の現場がありません。');
+        return;
+      }
+
+      if (confirm(`現場「${currentSite.siteName}」と全部屋データを削除しますか？`)) {
+        storeData.sites = storeData.sites.filter(s => s.id !== currentSite.id);
+        storeData.currentSiteId = storeData.sites.length > 0 ? storeData.sites[0].id : "";
+        updateSiteDropdown();
+        renderTable();
+      }
+    }
+
+    function sortRooms(rooms) {
+      if (!rooms) return;
+      rooms.sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true, sensitivity: 'base' }));
     }
 
     async function loadDataFromCloud() {
@@ -167,11 +248,25 @@
       try {
         const res = await fetch(GAS_URL);
         const data = await res.json();
+        
         if (data && typeof data === 'object') {
-          appData.siteName = data.siteName || '';
-          appData.rooms = data.rooms || [];
+          // 旧データ構造（単一現場）からの移行互換処理
+          if (data.rooms && !data.sites) {
+            const defaultId = "site_default";
+            storeData = {
+              currentSiteId: defaultId,
+              sites: [{
+                id: defaultId,
+                siteName: data.siteName || "既存現場",
+                rooms: data.rooms || []
+              }]
+            };
+          } else if (data.sites) {
+            storeData = data;
+          }
         }
-        updateTitle();
+
+        updateSiteDropdown();
         renderTable(false);
         document.getElementById('syncStatus').textContent = "最新";
       } catch (e) {
@@ -186,7 +281,7 @@
         await fetch(GAS_URL, {
           method: "POST",
           headers: { "Content-Type": "text/plain" },
-          body: JSON.stringify(appData)
+          body: JSON.stringify(storeData)
         });
         document.getElementById('syncStatus').textContent = "最新";
       } catch (e) {
@@ -195,11 +290,19 @@
     }
 
     function renderTable(shouldSave = true) {
-      sortRooms();
+      const currentSite = getCurrentSite();
       const tbody = document.getElementById('roomTableBody');
       tbody.innerHTML = '';
 
-      appData.rooms.forEach((room, index) => {
+      if (!currentSite) {
+        document.getElementById('selectAll').checked = false;
+        if (shouldSave) saveDataToCloud();
+        return;
+      }
+
+      sortRooms(currentSite.rooms);
+
+      currentSite.rooms.forEach((room, index) => {
         const tr = document.createElement('tr');
         tr.className = room.completed ? 'status-completed' : 'status-uncompleted';
 
@@ -242,7 +345,6 @@
       const table = document.getElementById('matrixTable');
       table.innerHTML = '';
 
-      // ヘッダー（横軸：部屋番号 01, 02... & 全選択）
       let headerTr = document.createElement('tr');
       headerTr.innerHTML = `<th><input type="checkbox" onchange="toggleMatrixAll(this)"> 全選択</th>`;
       for (let r = 1; r <= rooms; r++) {
@@ -251,7 +353,6 @@
       }
       table.appendChild(headerTr);
 
-      // 各階（縦軸：階数 15階〜1階）
       for (let f = floors; f >= 1; f--) {
         let tr = document.createElement('tr');
         tr.innerHTML = `<th>${f}階 <input type="checkbox" onchange="toggleMatrixRow(${f}, this.checked)"></th>`;
@@ -276,6 +377,9 @@
     }
 
     function addSelectedMatrixRooms() {
+      const currentSite = getCurrentSite();
+      if (!currentSite) { alert('先に現場を作成してください。'); return; }
+
       const selected = document.querySelectorAll('.matrix-cb:checked');
       if (selected.length === 0) {
         alert('追加したい部屋にチェックを入れてください。');
@@ -285,8 +389,8 @@
       let addedCount = 0;
       selected.forEach(cb => {
         const roomId = cb.value;
-        if (!appData.rooms.some(r => r.id === roomId)) {
-          appData.rooms.push({ id: roomId, completed: false, worker: '', completedAt: '', memo: '' });
+        if (!currentSite.rooms.some(r => r.id === roomId)) {
+          currentSite.rooms.push({ id: roomId, completed: false, worker: '', completedAt: '', memo: '' });
           addedCount++;
         }
       });
@@ -305,6 +409,9 @@
     }
 
     function deleteSelectedRooms() {
+      const currentSite = getCurrentSite();
+      if (!currentSite) return;
+
       const checkboxes = document.querySelectorAll('.room-checkbox:checked');
       if (checkboxes.length === 0) {
         alert('削除したい部屋にチェックを入れてください。');
@@ -317,7 +424,7 @@
           .sort((a, b) => b - a);
 
         indicesToDelete.forEach(index => {
-          appData.rooms.splice(index, 1);
+          currentSite.rooms.splice(index, 1);
         });
 
         renderTable();
@@ -325,18 +432,22 @@
     }
 
     function updateMemo(index, value) {
-      appData.rooms[index].memo = value;
+      const currentSite = getCurrentSite();
+      if (!currentSite) return;
+      currentSite.rooms[index].memo = value;
       saveDataToCloud();
     }
 
     function addRoom(customRoomStr) {
+      const currentSite = getCurrentSite();
+      if (!currentSite) { alert('先に現場を作成するか選択してください。'); return; }
+
       const input = document.getElementById('roomInput');
       const rawInput = customRoomStr || input.value.trim();
 
       if (!rawInput) { alert('部屋番号を入力してください'); return; }
 
       const rangeMatch = rawInput.match(/^(\d+)[〜\-~～](\d+)$/);
-
       let addedCount = 0;
 
       if (rangeMatch) {
@@ -352,8 +463,8 @@
 
         for (let i = start; i <= end; i++) {
           const roomId = String(i).padStart(digits, '0');
-          if (!appData.rooms.some(r => r.id === roomId)) {
-            appData.rooms.push({ id: roomId, completed: false, worker: '', completedAt: '', memo: '' });
+          if (!currentSite.rooms.some(r => r.id === roomId)) {
+            currentSite.rooms.push({ id: roomId, completed: false, worker: '', completedAt: '', memo: '' });
             addedCount++;
           }
         }
@@ -361,12 +472,12 @@
         const roomId = rawInput.replace(/[^0-9a-zA-Z\-]/g, '');
         if (!roomId) { alert('正しい部屋番号を入力してください'); return; }
 
-        if (appData.rooms.some(r => r.id === roomId)) {
+        if (currentSite.rooms.some(r => r.id === roomId)) {
           alert(`${roomId}号室は既に追加されています`);
           return;
         }
 
-        appData.rooms.push({ id: roomId, completed: false, worker: '', completedAt: '', memo: '' });
+        currentSite.rooms.push({ id: roomId, completed: false, worker: '', completedAt: '', memo: '' });
         addedCount++;
       }
 
@@ -379,10 +490,13 @@
     }
 
     function toggleStatus(index, forceStatus) {
+      const currentSite = getCurrentSite();
+      if (!currentSite) return;
+
       currentWorker = document.getElementById('userNameInput').value.trim();
       localStorage.setItem('workerName', currentWorker);
 
-      const room = appData.rooms[index];
+      const room = currentSite.rooms[index];
 
       if (forceStatus !== undefined) {
         room.completed = forceStatus;
@@ -402,8 +516,11 @@
     }
 
     function deleteRoom(index) {
-      if (confirm(`${appData.rooms[index].id}号室を削除しますか？`)) {
-        appData.rooms.splice(index, 1);
+      const currentSite = getCurrentSite();
+      if (!currentSite) return;
+
+      if (confirm(`${currentSite.rooms[index].id}号室を削除しますか？`)) {
+        currentSite.rooms.splice(index, 1);
         renderTable();
       }
     }
@@ -425,6 +542,9 @@
         let transcript = event.results[0][0].transcript;
         resetVoiceBtn();
 
+        const currentSite = getCurrentSite();
+        if (!currentSite) { alert('現場が選択されていません'); return; }
+
         const rangeVoiceMatch = transcript.match(/(\d+)\s*(?:から|〜|-|~)\s*(\d+)/);
 
         if (rangeVoiceMatch) {
@@ -436,11 +556,11 @@
         if (!roomNum) { alert(`部屋番号を読み取れませんでした: 「${transcript}」`); return; }
 
         if (transcript.includes('未完了') || transcript.includes('戻す') || transcript.includes('キャンセル')) {
-          let index = appData.rooms.findIndex(r => r.id === roomNum);
+          let index = currentSite.rooms.findIndex(r => r.id === roomNum);
           if (index !== -1) toggleStatus(index, false);
         } else if (transcript.includes('完了') || transcript.includes('おわり') || transcript.includes('済')) {
-          let index = appData.rooms.findIndex(r => r.id === roomNum);
-          if (index === -1) { addRoom(roomNum); index = appData.rooms.findIndex(r => r.id === roomNum); }
+          let index = currentSite.rooms.findIndex(r => r.id === roomNum);
+          if (index === -1) { addRoom(roomNum); index = currentSite.rooms.findIndex(r => r.id === roomNum); }
           if (index !== -1) toggleStatus(index, true);
         } else {
           addRoom(roomNum);
