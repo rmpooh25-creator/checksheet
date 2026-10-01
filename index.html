@@ -71,7 +71,7 @@
 <body>
 
   <h1>
-    <span id="titleDisplay">🏢 現場チェックシート</span>
+    <span id="titleDisplay">🏢 部屋チェックシート</span>
     <span id="syncStatus" class="sync-status">同期中...</span>
   </h1>
 
@@ -138,10 +138,13 @@
     const GAS_URL = "https://script.google.com/macros/s/AKfycbwuX2TJnnkoBtu-5TYnfdPGwDnp9SgJuQCvkamiQBMWTNuq8UpQtD_eKUfoYuBe5mg65A/exec";
 
     let storeData = {
-      currentSiteId: "",
-      sites: []
+      currentSiteId: "default_1",
+      sites: [
+        { id: "default_1", siteName: "既存現場", rooms: [] }
+      ]
     };
 
+    let isSaving = false;
     let currentWorker = localStorage.getItem('workerName') || '';
     document.getElementById('userNameInput').value = currentWorker;
 
@@ -162,7 +165,12 @@
 
     function getCurrentSite() {
       if (!storeData.sites || storeData.sites.length === 0) return null;
-      return storeData.sites.find(s => s.id === storeData.currentSiteId) || storeData.sites[0];
+      let site = storeData.sites.find(s => s.id === storeData.currentSiteId);
+      if (!site) {
+        site = storeData.sites[0];
+        storeData.currentSiteId = site.id;
+      }
+      return site;
     }
 
     function updateSiteDropdown() {
@@ -170,9 +178,8 @@
       select.innerHTML = '';
 
       if (!storeData.sites || storeData.sites.length === 0) {
-        const defaultSite = { id: "site_" + Date.now(), siteName: "既存現場", rooms: [] };
-        storeData.sites = [defaultSite];
-        storeData.currentSiteId = defaultSite.id;
+        storeData.sites = [{ id: "site_" + Date.now(), siteName: "既存現場", rooms: [] }];
+        storeData.currentSiteId = storeData.sites[0].id;
       }
 
       storeData.sites.forEach(site => {
@@ -185,7 +192,6 @@
 
       const currentSite = getCurrentSite();
       if (currentSite) {
-        storeData.currentSiteId = currentSite.id;
         document.getElementById('titleDisplay').textContent = `🏢 ${currentSite.siteName}`;
       }
     }
@@ -237,7 +243,12 @@
 
       if (confirm(`現場「${currentSite.siteName}」と全部屋データを削除しますか？`)) {
         storeData.sites = storeData.sites.filter(s => s.id !== currentSite.id);
-        storeData.currentSiteId = storeData.sites.length > 0 ? storeData.sites[0].id : "";
+        if (storeData.sites.length > 0) {
+          storeData.currentSiteId = storeData.sites[0].id;
+        } else {
+          storeData.sites = [{ id: "site_" + Date.now(), siteName: "既存現場", rooms: [] }];
+          storeData.currentSiteId = storeData.sites[0].id;
+        }
         updateSiteDropdown();
         renderTable();
       }
@@ -249,15 +260,15 @@
     }
 
     async function loadDataFromCloud() {
-      if (!GAS_URL) return;
+      if (!GAS_URL || isSaving) return;
       try {
         const res = await fetch(GAS_URL);
         const data = await res.json();
         
         if (data && typeof data === 'object') {
-          // 古い形式のデータ（rooms配列が直接保存されている場合）を自動変換して救出
+          // 旧形式（rooms配列のみ等）の互換処理
           if (data.rooms && !data.sites) {
-            const defaultId = "site_default";
+            const defaultId = "default_1";
             storeData = {
               currentSiteId: defaultId,
               sites: [{
@@ -266,7 +277,7 @@
                 rooms: data.rooms || []
               }]
             };
-          } else if (data.sites) {
+          } else if (data.sites && data.sites.length > 0) {
             storeData = data;
           }
         }
@@ -281,16 +292,19 @@
 
     async function saveDataToCloud() {
       if (!GAS_URL) return;
+      isSaving = true;
       try {
         document.getElementById('syncStatus').textContent = "保存中...";
         await fetch(GAS_URL, {
           method: "POST",
-          headers: { "Content-Type": "text/plain" },
-          body: JSON.stringify(storeData)
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: "data=" + encodeURIComponent(JSON.stringify(storeData))
         });
         document.getElementById('syncStatus').textContent = "最新";
       } catch (e) {
         document.getElementById('syncStatus').textContent = "保存エラー";
+      } finally {
+        isSaving = false;
       }
     }
 
