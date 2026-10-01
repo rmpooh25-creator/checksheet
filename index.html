@@ -10,17 +10,17 @@
     h1 { font-size: 1.3rem; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; }
     
     .header-setting { background: #ffffff; padding: 12px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.08); margin-bottom: 12px; display: flex; flex-direction: column; gap: 10px; }
-    .input-group { display: flex; align-items: center; gap: 8px; }
+    .input-group { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
     .input-group label { font-weight: bold; font-size: 0.9rem; white-space: nowrap; width: 65px; }
     input[type="text"], input[type="number"], select { padding: 8px 10px; font-size: 0.95rem; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
-    select { background-color: #fff; width: 100%; font-weight: bold; }
+    select { background-color: #fff; flex: 1; min-width: 150px; font-weight: bold; }
     
     .btn-site-add { background-color: #28a745; color: white; border: none; padding: 8px 12px; border-radius: 4px; font-size: 0.85rem; font-weight: bold; cursor: pointer; white-space: nowrap; }
+    .btn-site-edit { background-color: #007bff; color: white; border: none; padding: 8px 12px; border-radius: 4px; font-size: 0.85rem; font-weight: bold; cursor: pointer; white-space: nowrap; }
     .btn-site-del { background-color: #dc3545; color: white; border: none; padding: 8px 12px; border-radius: 4px; font-size: 0.85rem; font-weight: bold; cursor: pointer; white-space: nowrap; }
 
     .form-container { background: white; padding: 12px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.08); margin-bottom: 12px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
     
-    /* 折りたたみ付きマトリクス一括入力エリア */
     details.matrix-container { background: #eef5ff; border-radius: 8px; border: 1px solid #cce5ff; margin-bottom: 15px; padding: 10px 12px; }
     details.matrix-container[open] { padding-bottom: 12px; }
     summary.matrix-summary { font-size: 0.95rem; font-weight: bold; color: #004085; cursor: pointer; outline: none; list-style: none; user-select: none; display: flex; justify-content: space-between; align-items: center; }
@@ -45,7 +45,6 @@
     button.voice-btn.recording { background-color: #dc3545; animation: pulse 1s infinite; }
     @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
 
-    /* 一括操作エリア */
     .bulk-actions { margin-bottom: 8px; display: flex; gap: 10px; align-items: center; }
     .btn-bulk-delete { background-color: #dc3545; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-size: 0.85rem; font-weight: bold; cursor: pointer; }
 
@@ -53,7 +52,6 @@
     table.main-table th, table.main-table td { border: 1px solid #dcdcdc; padding: 8px 6px; text-align: center; font-size: 0.85rem; }
     table.main-table th { background-color: #e9ecef; color: #495057; font-weight: bold; }
     
-    /* 赤と緑の背景設定 */
     tr.status-uncompleted { background-color: #ffe6e6 !important; }
     tr.status-completed { background-color: #e6ffed !important; }
 
@@ -83,16 +81,16 @@
       <select id="siteSelect" onchange="changeSite()">
         <option value="">-- 現場を選択 --</option>
       </select>
+      <button class="btn-site-edit" onclick="renameCurrentSite()">✏️ 名称変更</button>
       <button class="btn-site-add" onclick="createNewSite()">＋ 新規現場</button>
       <button class="btn-site-del" onclick="deleteCurrentSite()">🗑️ 削除</button>
     </div>
     <div class="input-group">
       <label for="userNameInput">作業者:</label>
-      <input type="text" id="userNameInput" placeholder="例: 山田" onchange="saveWorkerName()" />
+      <input type="text" id="userNameInput" placeholder="例: らむ" style="flex:1;" onchange="saveWorkerName()" />
     </div>
   </div>
 
-  <!-- 折りたたみ可能なマトリクス一括入力エリア -->
   <details class="matrix-container">
     <summary class="matrix-summary">🏢 階数・部屋指定 一括作成（マトリクス選択）</summary>
     <div class="matrix-content">
@@ -105,7 +103,6 @@
       
       <div class="matrix-scroll">
         <table class="matrix-table" id="matrixTable">
-          <!-- JSで動的生成 -->
         </table>
       </div>
       
@@ -140,10 +137,9 @@
   <script>
     const GAS_URL = "https://script.google.com/macros/s/AKfycbwuX2TJnnkoBtu-5TYnfdPGwDnp9SgJuQCvkamiQBMWTNuq8UpQtD_eKUfoYuBe5mg65A/exec";
 
-    // アプリ全体のデータ構造（複数現場対応）
     let storeData = {
       currentSiteId: "",
-      sites: [] // { id: "167...", siteName: "〇〇マンション", rooms: [...] }
+      sites: []
     };
 
     let currentWorker = localStorage.getItem('workerName') || '';
@@ -174,9 +170,9 @@
       select.innerHTML = '';
 
       if (!storeData.sites || storeData.sites.length === 0) {
-        select.innerHTML = '<option value="">-- 現場がありません --</option>';
-        document.getElementById('titleDisplay').textContent = '🏢 現場チェックシート';
-        return;
+        const defaultSite = { id: "site_" + Date.now(), siteName: "既存現場", rooms: [] };
+        storeData.sites = [defaultSite];
+        storeData.currentSiteId = defaultSite.id;
       }
 
       storeData.sites.forEach(site => {
@@ -191,6 +187,18 @@
       if (currentSite) {
         storeData.currentSiteId = currentSite.id;
         document.getElementById('titleDisplay').textContent = `🏢 ${currentSite.siteName}`;
+      }
+    }
+
+    function renameCurrentSite() {
+      const currentSite = getCurrentSite();
+      if (!currentSite) return;
+
+      const newName = prompt('現在の現場名を入力・変更してください:', currentSite.siteName);
+      if (newName && newName.trim()) {
+        currentSite.siteName = newName.trim();
+        updateSiteDropdown();
+        saveDataToCloud();
       }
     }
 
@@ -225,10 +233,7 @@
 
     function deleteCurrentSite() {
       const currentSite = getCurrentSite();
-      if (!currentSite) {
-        alert('削除対象の現場がありません。');
-        return;
-      }
+      if (!currentSite) return;
 
       if (confirm(`現場「${currentSite.siteName}」と全部屋データを削除しますか？`)) {
         storeData.sites = storeData.sites.filter(s => s.id !== currentSite.id);
@@ -250,7 +255,7 @@
         const data = await res.json();
         
         if (data && typeof data === 'object') {
-          // 旧データ構造（単一現場）からの移行互換処理
+          // 古い形式のデータ（rooms配列が直接保存されている場合）を自動変換して救出
           if (data.rooms && !data.sites) {
             const defaultId = "site_default";
             storeData = {
@@ -338,7 +343,6 @@
       if (shouldSave) saveDataToCloud();
     }
 
-    /* マトリクス（縦軸・横軸）グリッドの生成 */
     function generateMatrixGrid() {
       const floors = parseInt(document.getElementById('matrixFloors').value, 10) || 1;
       const rooms = parseInt(document.getElementById('matrixRooms').value, 10) || 1;
