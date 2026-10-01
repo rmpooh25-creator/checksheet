@@ -138,7 +138,7 @@
     const GAS_URL = "https://script.google.com/macros/s/AKfycbwuX2TJnnkoBtu-5TYnfdPGwDnp9SgJuQCvkamiQBMWTNuq8UpQtD_eKUfoYuBe5mg65A/exec";
 
     let storeData = {
-      currentSiteId: "default_1",
+      currentSiteId: localStorage.getItem('lastSelectedSiteId') || "default_1",
       sites: [
         { id: "default_1", siteName: "既存現場", rooms: [] }
       ]
@@ -169,6 +169,7 @@
       if (!site) {
         site = storeData.sites[0];
         storeData.currentSiteId = site.id;
+        localStorage.setItem('lastSelectedSiteId', site.id);
       }
       return site;
     }
@@ -178,8 +179,15 @@
       select.innerHTML = '';
 
       if (!storeData.sites || storeData.sites.length === 0) {
-        storeData.sites = [{ id: "site_" + Date.now(), siteName: "既存現場", rooms: [] }];
-        storeData.currentSiteId = storeData.sites[0].id;
+        const newId = "site_" + Date.now();
+        storeData.sites = [{ id: newId, siteName: "既存現場", rooms: [] }];
+        storeData.currentSiteId = newId;
+        localStorage.setItem('lastSelectedSiteId', newId);
+      }
+
+      const savedSiteId = localStorage.getItem('lastSelectedSiteId');
+      if (savedSiteId && storeData.sites.some(s => s.id === savedSiteId)) {
+        storeData.currentSiteId = savedSiteId;
       }
 
       storeData.sites.forEach(site => {
@@ -221,6 +229,7 @@
       if (!storeData.sites) storeData.sites = [];
       storeData.sites.push(newSite);
       storeData.currentSiteId = newSite.id;
+      localStorage.setItem('lastSelectedSiteId', newSite.id);
 
       updateSiteDropdown();
       renderTable();
@@ -229,6 +238,8 @@
     function changeSite() {
       const select = document.getElementById('siteSelect');
       storeData.currentSiteId = select.value;
+      localStorage.setItem('lastSelectedSiteId', select.value);
+
       const currentSite = getCurrentSite();
       if (currentSite) {
         document.getElementById('titleDisplay').textContent = `🏢 ${currentSite.siteName}`;
@@ -241,17 +252,23 @@
       const currentSite = getCurrentSite();
       if (!currentSite) return;
 
-      if (confirm(`現場「${currentSite.siteName}」と全部屋データを削除しますか？`)) {
-        storeData.sites = storeData.sites.filter(s => s.id !== currentSite.id);
-        if (storeData.sites.length > 0) {
-          storeData.currentSiteId = storeData.sites[0].id;
-        } else {
-          storeData.sites = [{ id: "site_" + Date.now(), siteName: "既存現場", rooms: [] }];
-          storeData.currentSiteId = storeData.sites[0].id;
-        }
-        updateSiteDropdown();
-        renderTable();
+      // 💥 削除確認のポップアップを追加
+      const isConfirmed = confirm(`⚠️ 【確認】\n現場「${currentSite.siteName}」と登録されている全部屋データを本当に削除しますか？\n（この操作は元に戻せません）`);
+      
+      if (!isConfirmed) return;
+
+      storeData.sites = storeData.sites.filter(s => s.id !== currentSite.id);
+      if (storeData.sites.length > 0) {
+        storeData.currentSiteId = storeData.sites[0].id;
+      } else {
+        const newId = "site_" + Date.now();
+        storeData.sites = [{ id: newId, siteName: "既存現場", rooms: [] }];
+        storeData.currentSiteId = newId;
       }
+      localStorage.setItem('lastSelectedSiteId', storeData.currentSiteId);
+      
+      updateSiteDropdown();
+      renderTable();
     }
 
     function sortRooms(rooms) {
@@ -266,19 +283,15 @@
         const data = await res.json();
         
         if (data && typeof data === 'object') {
-          // 旧形式（rooms配列のみ等）の互換処理
           if (data.rooms && !data.sites) {
             const defaultId = "default_1";
-            storeData = {
-              currentSiteId: defaultId,
-              sites: [{
-                id: defaultId,
-                siteName: data.siteName || "既存現場",
-                rooms: data.rooms || []
-              }]
-            };
+            storeData.sites = [{
+              id: defaultId,
+              siteName: data.siteName || "既存現場",
+              rooms: data.rooms || []
+            }];
           } else if (data.sites && data.sites.length > 0) {
-            storeData = data;
+            storeData.sites = data.sites;
           }
         }
 
