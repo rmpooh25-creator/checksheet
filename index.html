@@ -8,17 +8,20 @@
     body { font-family: sans-serif; margin: 15px; background: #f8f9fa; }
     h1 { font-size: 1.4rem; margin-bottom: 10px; }
     .card { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 15px; }
-    .btn { padding: 8px 12px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; margin: 2px; }
+    .btn { padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; margin: 2px; }
     .btn-primary { background: #007bff; color: white; }
     .btn-success { background: #28a745; color: white; }
     .btn-danger { background: #dc3545; color: white; }
     .btn-secondary { background: #6c757d; color: white; }
-    select, input[type="text"] { padding: 8px; border: 1px solid #ccc; border-radius: 4px; margin-right: 5px; margin-bottom: 5px; }
+    select, input[type="text"] { padding: 6px; border: 1px solid #ccc; border-radius: 4px; margin-right: 5px; margin-bottom: 5px; }
     .matrix-box { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 10px; background: #e9ecef; padding: 10px; border-radius: 6px; }
-    table { width: 100%; border-collapse: collapse; margin-top: 10px; background: white; }
-    th, td { border: 1px solid #dee2e6; padding: 10px; text-align: center; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; background: white; font-size: 0.9rem; }
+    th, td { border: 1px solid #dee2e6; padding: 8px; text-align: center; vertical-align: middle; }
     th { background: #e9ecef; }
-    .room-row:hover { background: #f1f3f5; }
+    .status-badge { padding: 4px 8px; border-radius: 4px; font-weight: bold; cursor: pointer; display: inline-block; }
+    .status-pending { background: #ffc107; color: #212529; }
+    .status-completed { background: #28a745; color: white; }
+    .history-text { font-size: 0.75rem; color: #6c757d; line-height: 1.2; }
   </style>
 </head>
 <body>
@@ -31,11 +34,15 @@
       <button class="btn btn-secondary" onclick="addSite()">＋ 新規現場</button>
       <button class="btn btn-danger" onclick="deleteCurrentSite()">🗑️ 現場削除</button>
     </div>
+    <div style="margin-top: 10px;">
+      <label><b>作業者名: </b></label>
+      <input type="text" id="workerName" placeholder="担当者名を入力" style="width: 150px;">
+    </div>
   </div>
 
-  <!-- プルダウンで部屋を一括自動生成するマトリクス機能 -->
+  <!-- マトリクス自動作成 -->
   <div class="card">
-    <h3>マトリクス部屋一括生成（プルダウン選択）</h3>
+    <h3>マトリクス部屋一括生成</h3>
     <div class="matrix-box">
       <div>
         <label>階数: </label>
@@ -45,13 +52,13 @@
         <label>号室: </label>
         <select id="startRoom"></select> ～ <select id="endRoom"></select> 号室
       </div>
-      <button class="btn btn-success" onclick="generateMatrixRooms()">マトリクスで部屋生成</button>
+      <button class="btn btn-success" onclick="generateMatrixRooms()">マトリクス生成</button>
     </div>
 
-    <h3 style="margin-top: 20px;">手動追加 / 一括削除</h3>
-    <input type="text" id="roomInput" placeholder="例: 101 または 特殊部屋名" style="width: 200px;">
+    <h3 style="margin-top: 15px;">手動追加 / 一括削除</h3>
+    <input type="text" id="roomInput" placeholder="例: 101" style="width: 150px;">
     <button class="btn btn-primary" onclick="addSingleRoomFromInput()">部屋追加</button>
-    <button class="btn btn-danger" onclick="deleteSelectedRooms()">選択した部屋を削除</button>
+    <button class="btn btn-danger" onclick="deleteSelectedRooms()">選択部屋を削除</button>
   </div>
 
   <table>
@@ -59,7 +66,10 @@
       <tr>
         <th>選択</th>
         <th>部屋番号</th>
-        <th>ステータス / 操作</th>
+        <th>ステータス（切替可）</th>
+        <th>メモ</th>
+        <th>最終更新（誰が・いつ）</th>
+        <th>操作</th>
       </tr>
     </thead>
     <tbody id="roomList"></tbody>
@@ -68,6 +78,7 @@
   <script>
     let sitesData = JSON.parse(localStorage.getItem("sitesData")) || { "既存現場": [] };
     let currentSite = localStorage.getItem("currentSite") || Object.keys(sitesData)[0] || "既存現場";
+    let currentWorker = localStorage.getItem("currentWorker") || "";
 
     if (!sitesData[currentSite]) {
       sitesData[currentSite] = [];
@@ -76,12 +87,17 @@
     init();
 
     function init() {
+      document.getElementById("workerName").value = currentWorker;
+      document.getElementById("workerName").addEventListener("input", (e) => {
+        currentWorker = e.target.value.trim();
+        localStorage.setItem("currentWorker", currentWorker);
+      });
+
       setupSelectOptions();
       renderSiteSelect();
       renderRooms();
     }
 
-    // プルダウン（階数・号室）の選択肢を自動生成
     function setupSelectOptions() {
       const startFloor = document.getElementById("startFloor");
       const endFloor = document.getElementById("endFloor");
@@ -91,23 +107,21 @@
       startFloor.innerHTML = ""; endFloor.innerHTML = "";
       startRoom.innerHTML = ""; endRoom.innerHTML = "";
 
-      // 階数（1F〜15F）
       for (let i = 1; i <= 15; i++) {
         startFloor.innerHTML += `<option value="${i}">${i}階</option>`;
         endFloor.innerHTML += `<option value="${i}">${i}階</option>`;
       }
-      endFloor.value = "3"; // 初期値: 3階
+      endFloor.value = "3";
 
-      // 号室（01号〜15号）
       for (let i = 1; i <= 15; i++) {
         const numStr = String(i).padStart(2, "0");
         startRoom.innerHTML += `<option value="${numStr}">${numStr}号室</option>`;
         endRoom.innerHTML += `<option value="${numStr}">${numStr}号室</option>`;
       }
-      endRoom.value = "05"; // 初期値: 05号室
+      endRoom.value = "05";
     }
 
-    // プルダウンで指定したマトリクス（例: 1〜3階 × 01〜05号室）から部屋名を自動作成
+    // マトリクス作成
     function generateMatrixRooms() {
       const sf = parseInt(document.getElementById("startFloor").value, 10);
       const ef = parseInt(document.getElementById("endFloor").value, 10);
@@ -115,16 +129,16 @@
       const er = parseInt(document.getElementById("endRoom").value, 10);
 
       if (sf > ef || sr > er) {
-        alert("開始の階数・号室は、終了の階数・号室より小さい値を指定してください。");
+        alert("開始の階・号室は終了より小さい値を指定してください。");
         return;
       }
 
       let count = 0;
       for (let f = sf; f <= ef; f++) {
         for (let r = sr; r <= er; r++) {
-          const roomName = `${f}${String(r).padStart(2, "0")}`; // 例: 101, 102, 201...
-          if (!sitesData[currentSite].includes(roomName)) {
-            sitesData[currentSite].push(roomName);
+          const roomName = `${f}${String(r).padStart(2, "0")}`;
+          if (!getRoomObj(roomName)) {
+            sitesData[currentSite].push(createRoomObj(roomName));
             count++;
           }
         }
@@ -135,7 +149,22 @@
       alert(`${count}件の部屋を追加しました。`);
     }
 
-    // 手動追加（コード混入ガードつき）
+    // 部屋オブジェクトの統一化（名前・ステータス・メモ・日時・作業者）
+    function createRoomObj(name) {
+      return {
+        name: name,
+        status: "未完了",
+        memo: "",
+        updatedAt: "",
+        updatedBy: ""
+      };
+    }
+
+    function getRoomObj(name) {
+      return sitesData[currentSite].find(r => (typeof r === "object" ? r.name : r) === name);
+    }
+
+    // 手動追加
     function addSingleRoomFromInput() {
       const input = document.getElementById("roomInput");
       const val = input.value.trim();
@@ -146,12 +175,78 @@
         return;
       }
 
-      if (!sitesData[currentSite].includes(val)) {
-        sitesData[currentSite].push(val);
+      if (!getRoomObj(val)) {
+        sitesData[currentSite].push(createRoomObj(val));
       }
       input.value = "";
       saveAll();
       renderRooms();
+    }
+
+    // 描画処理
+    function renderRooms() {
+      const tbody = document.getElementById("roomList");
+      tbody.innerHTML = "";
+
+      // 不正データの自動除去と既存データのオブジェクト変換
+      sitesData[currentSite] = (sitesData[currentSite] || []).filter(room => {
+        const name = typeof room === "object" ? room.name : String(room);
+        return !name.includes("function") && !name.includes("{") && name.length <= 20;
+      }).map(room => {
+        if (typeof room === "string") {
+          return createRoomObj(room);
+        }
+        return room;
+      });
+
+      sitesData[currentSite].forEach((room, index) => {
+        const tr = document.createElement("tr");
+        
+        const isCompleted = room.status === "完了";
+        const statusClass = isCompleted ? "status-completed" : "status-pending";
+        const history = room.updatedAt ? `${room.updatedAt}<br>担当: ${room.updatedBy || "未設定"}` : "未記録";
+
+        tr.innerHTML = `
+          <td><input type="checkbox" id="room-check-${index}"></td>
+          <td><b>${room.name}</b></td>
+          <td>
+            <span class="status-badge ${statusClass}" onclick="toggleStatus(${index})">
+              ${room.status || "未完了"}
+            </span>
+          </td>
+          <td>
+            <input type="text" value="${room.memo || ""}" onchange="updateMemo(${index}, this.value)" placeholder="メモ入力">
+          </td>
+          <td class="history-text">${history}</td>
+          <td><button class="btn btn-danger" onclick="deleteSingleRoom(${index})">削除</button></td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // ステータス切り替え（完了 / 未完了）および更新日時・作業者の自動追記
+    function toggleStatus(index) {
+      const room = sitesData[currentSite][index];
+      room.status = (room.status === "完了") ? "未完了" : "完了";
+      updateHistory(room);
+      saveAll();
+      renderRooms();
+    }
+
+    // メモ更新
+    function updateMemo(index, text) {
+      const room = sitesData[currentSite][index];
+      room.memo = text;
+      updateHistory(room);
+      saveAll();
+    }
+
+    // 変更履歴の更新
+    function updateHistory(room) {
+      const now = new Date();
+      const timeStr = `${now.getMonth()+1}/${now.getDate()} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+      room.updatedAt = timeStr;
+      room.updatedBy = currentWorker || "未設定";
     }
 
     // 現場のプルダウン作成
@@ -167,14 +262,12 @@
       });
     }
 
-    // 現場切り替え
     function switchSite() {
       currentSite = document.getElementById("siteSelect").value;
       localStorage.setItem("currentSite", currentSite);
       renderRooms();
     }
 
-    // 新規現場追加
     function addSite() {
       const name = prompt("新しい現場名を入力してください:");
       if (!name || !name.trim()) return;
@@ -192,7 +285,6 @@
       renderRooms();
     }
 
-    // 現場削除
     function deleteCurrentSite() {
       if (Object.keys(sitesData).length <= 1) {
         alert("最後の現場は削除できません。");
@@ -207,29 +299,7 @@
       }
     }
 
-    // 部屋一覧の描画（壊れたコードの混入防止・フィルタ）
-    function renderRooms() {
-      const tbody = document.getElementById("roomList");
-      tbody.innerHTML = "";
-
-      sitesData[currentSite] = (sitesData[currentSite] || []).filter(room => {
-        const str = String(room);
-        return !str.includes("function") && !str.includes("{") && str.length <= 20;
-      });
-
-      sitesData[currentSite].forEach((room, index) => {
-        const tr = document.createElement("tr");
-        tr.className = "room-row";
-        tr.innerHTML = `
-          <td><input type="checkbox" id="room-check-${index}"></td>
-          <td><b>${room}</b></td>
-          <td><button class="btn btn-danger" onclick="deleteSingleRoom(${index})">削除</button></td>
-        `;
-        tbody.appendChild(tr);
-      });
-    }
-
-    // 選択部屋の一括削除（インデックス基準で確実に削除）
+    // 削除処理
     function deleteSelectedRooms() {
       sitesData[currentSite] = sitesData[currentSite].filter((room, index) => {
         const checkbox = document.getElementById(`room-check-${index}`);
@@ -239,14 +309,12 @@
       renderRooms();
     }
 
-    // 単体削除
     function deleteSingleRoom(index) {
       sitesData[currentSite].splice(index, 1);
       saveAll();
       renderRooms();
     }
 
-    // 全保存
     function saveAll() {
       localStorage.setItem("sitesData", JSON.stringify(sitesData));
       localStorage.setItem("currentSite", currentSite);
