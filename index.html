@@ -7,12 +7,14 @@
   <style>
     body { font-family: sans-serif; margin: 15px; background: #f8f9fa; }
     h1 { font-size: 1.4rem; margin-bottom: 10px; }
-    .card { background: white; padding: 12px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 15px; }
+    .card { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 15px; }
     .btn { padding: 8px 12px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; margin: 2px; }
     .btn-primary { background: #007bff; color: white; }
+    .btn-success { background: #28a745; color: white; }
     .btn-danger { background: #dc3545; color: white; }
     .btn-secondary { background: #6c757d; color: white; }
-    input[type="text"], select { padding: 8px; border: 1px solid #ccc; border-radius: 4px; margin-right: 5px; }
+    select, input[type="text"] { padding: 8px; border: 1px solid #ccc; border-radius: 4px; margin-right: 5px; margin-bottom: 5px; }
+    .matrix-box { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 10px; background: #e9ecef; padding: 10px; border-radius: 6px; }
     table { width: 100%; border-collapse: collapse; margin-top: 10px; background: white; }
     th, td { border: 1px solid #dee2e6; padding: 10px; text-align: center; }
     th { background: #e9ecef; }
@@ -31,10 +33,24 @@
     </div>
   </div>
 
+  <!-- プルダウンで部屋を一括自動生成するマトリクス機能 -->
   <div class="card">
-    <h3>部屋追加（マトリクス/手動）</h3>
-    <input type="text" id="roomInput" placeholder="例: 101 または 101-105" style="width: 200px;">
-    <button class="btn btn-primary" onclick="addRoomFromInput()">部屋追加</button>
+    <h3>マトリクス部屋一括生成（プルダウン選択）</h3>
+    <div class="matrix-box">
+      <div>
+        <label>階数: </label>
+        <select id="startFloor"></select> ～ <select id="endFloor"></select> 階
+      </div>
+      <div>
+        <label>号室: </label>
+        <select id="startRoom"></select> ～ <select id="endRoom"></select> 号室
+      </div>
+      <button class="btn btn-success" onclick="generateMatrixRooms()">マトリクスで部屋生成</button>
+    </div>
+
+    <h3 style="margin-top: 20px;">手動追加 / 一括削除</h3>
+    <input type="text" id="roomInput" placeholder="例: 101 または 特殊部屋名" style="width: 200px;">
+    <button class="btn btn-primary" onclick="addSingleRoomFromInput()">部屋追加</button>
     <button class="btn btn-danger" onclick="deleteSelectedRooms()">選択した部屋を削除</button>
   </div>
 
@@ -60,7 +76,81 @@
     init();
 
     function init() {
+      setupSelectOptions();
       renderSiteSelect();
+      renderRooms();
+    }
+
+    // プルダウン（階数・号室）の選択肢を自動生成
+    function setupSelectOptions() {
+      const startFloor = document.getElementById("startFloor");
+      const endFloor = document.getElementById("endFloor");
+      const startRoom = document.getElementById("startRoom");
+      const endRoom = document.getElementById("endRoom");
+
+      startFloor.innerHTML = ""; endFloor.innerHTML = "";
+      startRoom.innerHTML = ""; endRoom.innerHTML = "";
+
+      // 階数（1F〜15F）
+      for (let i = 1; i <= 15; i++) {
+        startFloor.innerHTML += `<option value="${i}">${i}階</option>`;
+        endFloor.innerHTML += `<option value="${i}">${i}階</option>`;
+      }
+      endFloor.value = "3"; // 初期値: 3階
+
+      // 号室（01号〜15号）
+      for (let i = 1; i <= 15; i++) {
+        const numStr = String(i).padStart(2, "0");
+        startRoom.innerHTML += `<option value="${numStr}">${numStr}号室</option>`;
+        endRoom.innerHTML += `<option value="${numStr}">${numStr}号室</option>`;
+      }
+      endRoom.value = "05"; // 初期値: 05号室
+    }
+
+    // プルダウンで指定したマトリクス（例: 1〜3階 × 01〜05号室）から部屋名を自動作成
+    function generateMatrixRooms() {
+      const sf = parseInt(document.getElementById("startFloor").value, 10);
+      const ef = parseInt(document.getElementById("endFloor").value, 10);
+      const sr = parseInt(document.getElementById("startRoom").value, 10);
+      const er = parseInt(document.getElementById("endRoom").value, 10);
+
+      if (sf > ef || sr > er) {
+        alert("開始の階数・号室は、終了の階数・号室より小さい値を指定してください。");
+        return;
+      }
+
+      let count = 0;
+      for (let f = sf; f <= ef; f++) {
+        for (let r = sr; r <= er; r++) {
+          const roomName = `${f}${String(r).padStart(2, "0")}`; // 例: 101, 102, 201...
+          if (!sitesData[currentSite].includes(roomName)) {
+            sitesData[currentSite].push(roomName);
+            count++;
+          }
+        }
+      }
+
+      saveAll();
+      renderRooms();
+      alert(`${count}件の部屋を追加しました。`);
+    }
+
+    // 手動追加（コード混入ガードつき）
+    function addSingleRoomFromInput() {
+      const input = document.getElementById("roomInput");
+      const val = input.value.trim();
+      if (!val) return;
+
+      if (val.includes("function") || val.includes("{") || val.includes(";")) {
+        alert("正しい部屋番号を入力してください。");
+        return;
+      }
+
+      if (!sitesData[currentSite].includes(val)) {
+        sitesData[currentSite].push(val);
+      }
+      input.value = "";
+      saveAll();
       renderRooms();
     }
 
@@ -117,52 +207,11 @@
       }
     }
 
-    // 部屋追加（101-105 などの範囲指定・マトリクス入力対応 + コード混入防止）
-    function addRoomFromInput() {
-      const input = document.getElementById("roomInput");
-      const rawVal = input.value.trim();
-      if (!rawVal) return;
-
-      // ガード: コードや特殊記号の誤混入を拒否
-      if (rawVal.includes("function") || rawVal.includes("{") || rawVal.includes(";")) {
-        alert("正しい部屋番号を入力してください。");
-        return;
-      }
-
-      // 101-105 のようなハイフン範囲入力の展開
-      if (rawVal.includes("-")) {
-        const parts = rawVal.split("-");
-        const start = parseInt(parts[0], 10);
-        const end = parseInt(parts[1], 10);
-
-        if (!isNaN(start) && !isNaN(end) && start <= end) {
-          for (let i = start; i <= end; i++) {
-            addRoomToList(String(i));
-          }
-        } else {
-          addRoomToList(rawVal);
-        }
-      } else {
-        addRoomToList(rawVal);
-      }
-
-      input.value = "";
-      saveAll();
-      renderRooms();
-    }
-
-    function addRoomToList(roomName) {
-      if (!sitesData[currentSite].includes(roomName)) {
-        sitesData[currentSite].push(roomName);
-      }
-    }
-
-    // 部屋一覧の描画（異常データ自動フィルタリング）
+    // 部屋一覧の描画（壊れたコードの混入防止・フィルタ）
     function renderRooms() {
       const tbody = document.getElementById("roomList");
       tbody.innerHTML = "";
 
-      // 壊れたコード文字列を一覧から取り除く
       sitesData[currentSite] = (sitesData[currentSite] || []).filter(room => {
         const str = String(room);
         return !str.includes("function") && !str.includes("{") && str.length <= 20;
@@ -180,7 +229,7 @@
       });
     }
 
-    // 選択部屋の一括削除（インデックス基準で安全に削除）
+    // 選択部屋の一括削除（インデックス基準で確実に削除）
     function deleteSelectedRooms() {
       sitesData[currentSite] = sitesData[currentSite].filter((room, index) => {
         const checkbox = document.getElementById(`room-check-${index}`);
