@@ -145,6 +145,7 @@
     };
 
     let isSaving = false;
+    let lastFetchRequestId = 0; // 非同期レスポンスの世代管理ID
     let currentWorker = localStorage.getItem('workerName') || '';
     document.getElementById('userNameInput').value = currentWorker;
 
@@ -216,7 +217,6 @@
       }
     }
 
-    // ★ 整理後の唯一の createNewSite() 関数
     async function createNewSite() {
       const name = prompt('新しい現場名を入力してください:');
       if (!name || !name.trim()) return;
@@ -235,6 +235,7 @@
       updateSiteDropdown();
       renderTable(false);
 
+      // 新規現場を確定保存（完了するまで定期読み込みによる上書きを防ぐ）
       await saveDataToCloud();
     }
 
@@ -280,12 +281,18 @@
     }
 
     async function loadDataFromCloud() {
+      // 保存中なら定期同期を完全ブロック
       if (!GAS_URL || isSaving) return;
+
+      const requestId = Date.now();
+      lastFetchRequestId = requestId;
+
       try {
         const res = await fetch(GAS_URL);
         const data = await res.json();
         
-        if (isSaving) return;
+        // レスポンス受信時に保存処理中、または最新のリクエストでなければ棄てて上書きを防ぐ
+        if (isSaving || requestId !== lastFetchRequestId) return;
 
         if (data && typeof data === 'object') {
           if (data.rooms && !data.sites) {
