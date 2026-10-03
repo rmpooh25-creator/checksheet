@@ -24,12 +24,13 @@
     .status-pending { background: #ffc107; color: #212529; }
     .status-completed { background: #28a745; color: white; }
     .history-text { font-size: 0.75rem; color: #6c757d; line-height: 1.2; }
+    .sync-status { font-size: 0.8rem; margin-left: 10px; color: #28a745; }
   </style>
 </head>
 <body>
 
   <div class="card">
-    <h1>部屋チェックシート</h1>
+    <h1>部屋チェックシート <span id="syncStatus" class="sync-status"></span></h1>
     <div>
       <label><b>現場選択: </b></label>
       <select id="siteSelect" onchange="switchSite()"></select>
@@ -62,7 +63,7 @@
     <input type="text" id="roomInput" placeholder="例: 101" style="width: 150px;">
     <button class="btn btn-primary" onclick="addSingleRoomFromInput()">部屋追加</button>
     <button class="btn btn-warning" onclick="deleteSelectedRooms()">チェックした部屋を削除</button>
-    <button class="btn btn-danger" onclick="deleteAllRooms()">⚠️ 全部屋削除</button>
+    <button class="btn btn-danger" onclick="deleteAllRooms()">⚠️️ 全部屋削除</button>
   </div>
 
   <table>
@@ -80,6 +81,9 @@
   </table>
 
   <script>
+    // ↓ここにGASのWebアプリURL（https://script.google.com/macros/s/.../exec）を貼り付けます
+    const GAS_URL = "ここにGASのURLを貼り付け";
+
     let sitesData = JSON.parse(localStorage.getItem("sitesData")) || { "既存現場": [] };
     let currentSite = localStorage.getItem("currentSite") || Object.keys(sitesData)[0] || "既存現場";
     let currentWorker = localStorage.getItem("currentWorker") || "";
@@ -102,7 +106,6 @@
       renderRooms();
     }
 
-    // 階数・号室の選択肢生成（1〜50）
     function setupSelectOptions() {
       const startFloor = document.getElementById("startFloor");
       const endFloor = document.getElementById("endFloor");
@@ -126,7 +129,6 @@
       endRoom.value = "05";
     }
 
-    // 現場名の編集機能（既存現場などの変更）
     function renameCurrentSite() {
       const newName = prompt("新しい現場名を入力してください:", currentSite);
       if (!newName || !newName.trim()) return;
@@ -134,17 +136,11 @@
       const cleanName = newName.trim();
       if (cleanName === currentSite) return;
 
-      if (cleanName.includes("function") || cleanName.includes("{")) {
-        alert("無効な現場名です。");
-        return;
-      }
-
       if (sitesData[cleanName]) {
-        alert("同名の現場が既に存在します。別の名前を指定してください。");
+        alert("同名の現場が既に存在します。");
         return;
       }
 
-      // 既存のデータを新現場名に移行
       sitesData[cleanName] = sitesData[currentSite];
       delete sitesData[currentSite];
       currentSite = cleanName;
@@ -154,7 +150,6 @@
       renderRooms();
     }
 
-    // マトリクス作成
     function generateMatrixRooms() {
       const sf = parseInt(document.getElementById("startFloor").value, 10);
       const ef = parseInt(document.getElementById("endFloor").value, 10);
@@ -190,16 +185,10 @@
       return sitesData[currentSite].find(r => (typeof r === "object" ? r.name : r) === name);
     }
 
-    // 手動追加
     function addSingleRoomFromInput() {
       const input = document.getElementById("roomInput");
       const val = input.value.trim();
       if (!val) return;
-
-      if (val.includes("function") || val.includes("{") || val.includes(";")) {
-        alert("正しい部屋番号を入力してください。");
-        return;
-      }
 
       if (!getRoomObj(val)) {
         sitesData[currentSite].push(createRoomObj(val));
@@ -209,24 +198,17 @@
       renderRooms();
     }
 
-    // 描画処理
     function renderRooms() {
       const tbody = document.getElementById("roomList");
       tbody.innerHTML = "";
 
-      sitesData[currentSite] = (sitesData[currentSite] || []).filter(room => {
-        const name = typeof room === "object" ? room.name : String(room);
-        return !name.includes("function") && !name.includes("{") && name.length <= 20;
-      }).map(room => {
-        if (typeof room === "string") {
-          return createRoomObj(room);
-        }
+      sitesData[currentSite] = (sitesData[currentSite] || []).map(room => {
+        if (typeof room === "string") return createRoomObj(room);
         return room;
       });
 
       sitesData[currentSite].forEach((room, index) => {
         const tr = document.createElement("tr");
-        
         const isCompleted = room.status === "完了";
         const statusClass = isCompleted ? "status-completed" : "status-pending";
         const history = room.updatedAt ? `${room.updatedAt}<br>担当: ${room.updatedBy || "未設定"}` : "未記録";
@@ -257,7 +239,6 @@
       renderRooms();
     }
 
-    // メモ入力時に即時データ保存・履歴更新（フォーカスが外れるのを待たずにすぐ入力可能）
     function updateMemo(index, text) {
       const room = sitesData[currentSite][index];
       room.memo = text;
@@ -298,10 +279,6 @@
       const name = prompt("新しい現場名を入力してください:");
       if (!name || !name.trim()) return;
       const cleanName = name.trim();
-      if (cleanName.includes("function") || cleanName.includes("{")) {
-        alert("無効な現場名です。");
-        return;
-      }
       if (!sitesData[cleanName]) {
         sitesData[cleanName] = [];
       }
@@ -351,6 +328,26 @@
     function saveAll() {
       localStorage.setItem("sitesData", JSON.stringify(sitesData));
       localStorage.setItem("currentSite", currentSite);
+
+      if (GAS_URL && GAS_URL !== "ここにGASのURLを貼り付け") {
+        const statusEl = document.getElementById("syncStatus");
+        statusEl.textContent = "☁️ 保存中...";
+
+        fetch(GAS_URL, {
+          method: "POST",
+          mode: "no-cors",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            siteName: currentSite,
+            rooms: sitesData[currentSite]
+          })
+        }).then(() => {
+          statusEl.textContent = "✓ シート保存完了";
+          setTimeout(() => { statusEl.textContent = ""; }, 2000);
+        }).catch(err => {
+          statusEl.textContent = "⚠️ 保存エラー";
+        });
+      }
     }
   </script>
 </body>
