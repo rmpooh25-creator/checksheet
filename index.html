@@ -13,6 +13,7 @@
     .btn-success { background: #28a745; color: white; }
     .btn-danger { background: #dc3545; color: white; }
     .btn-secondary { background: #6c757d; color: white; }
+    .btn-warning { background: #ffc107; color: #212529; }
     select, input[type="text"] { padding: 6px; border: 1px solid #ccc; border-radius: 4px; margin-right: 5px; margin-bottom: 5px; }
     .matrix-box { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 10px; background: #e9ecef; padding: 10px; border-radius: 6px; }
     table { width: 100%; border-collapse: collapse; margin-top: 10px; background: white; font-size: 0.9rem; }
@@ -58,7 +59,8 @@
     <h3 style="margin-top: 15px;">手動追加 / 一括削除</h3>
     <input type="text" id="roomInput" placeholder="例: 101" style="width: 150px;">
     <button class="btn btn-primary" onclick="addSingleRoomFromInput()">部屋追加</button>
-    <button class="btn btn-danger" onclick="deleteSelectedRooms()">選択部屋を削除</button>
+    <button class="btn btn-warning" onclick="deleteSelectedRooms()">チェックした部屋を削除</button>
+    <button class="btn btn-danger" onclick="deleteAllRooms()">⚠️ 全部屋削除</button>
   </div>
 
   <table>
@@ -98,6 +100,7 @@
       renderRooms();
     }
 
+    // 階数・号室の選択肢を 1〜50 まで拡張生成
     function setupSelectOptions() {
       const startFloor = document.getElementById("startFloor");
       const endFloor = document.getElementById("endFloor");
@@ -107,13 +110,15 @@
       startFloor.innerHTML = ""; endFloor.innerHTML = "";
       startRoom.innerHTML = ""; endRoom.innerHTML = "";
 
-      for (let i = 1; i <= 15; i++) {
+      // 階数（1F〜50F）
+      for (let i = 1; i <= 50; i++) {
         startFloor.innerHTML += `<option value="${i}">${i}階</option>`;
         endFloor.innerHTML += `<option value="${i}">${i}階</option>`;
       }
       endFloor.value = "3";
 
-      for (let i = 1; i <= 15; i++) {
+      // 号室（01号〜50号）
+      for (let i = 1; i <= 50; i++) {
         const numStr = String(i).padStart(2, "0");
         startRoom.innerHTML += `<option value="${numStr}">${numStr}号室</option>`;
         endRoom.innerHTML += `<option value="${numStr}">${numStr}号室</option>`;
@@ -149,15 +154,8 @@
       alert(`${count}件の部屋を追加しました。`);
     }
 
-    // 部屋オブジェクトの統一化（名前・ステータス・メモ・日時・作業者）
     function createRoomObj(name) {
-      return {
-        name: name,
-        status: "未完了",
-        memo: "",
-        updatedAt: "",
-        updatedBy: ""
-      };
+      return { name: name, status: "未完了", memo: "", updatedAt: "", updatedBy: "" };
     }
 
     function getRoomObj(name) {
@@ -188,7 +186,6 @@
       const tbody = document.getElementById("roomList");
       tbody.innerHTML = "";
 
-      // 不正データの自動除去と既存データのオブジェクト変換
       sitesData[currentSite] = (sitesData[currentSite] || []).filter(room => {
         const name = typeof room === "object" ? room.name : String(room);
         return !name.includes("function") && !name.includes("{") && name.length <= 20;
@@ -224,7 +221,6 @@
       });
     }
 
-    // ステータス切り替え（完了 / 未完了）および更新日時・作業者の自動追記
     function toggleStatus(index) {
       const room = sitesData[currentSite][index];
       room.status = (room.status === "完了") ? "未完了" : "完了";
@@ -233,7 +229,6 @@
       renderRooms();
     }
 
-    // メモ更新
     function updateMemo(index, text) {
       const room = sitesData[currentSite][index];
       room.memo = text;
@@ -241,7 +236,6 @@
       saveAll();
     }
 
-    // 変更履歴の更新
     function updateHistory(room) {
       const now = new Date();
       const timeStr = `${now.getMonth()+1}/${now.getDate()} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
@@ -249,7 +243,6 @@
       room.updatedBy = currentWorker || "未設定";
     }
 
-    // 現場のプルダウン作成
     function renderSiteSelect() {
       const select = document.getElementById("siteSelect");
       select.innerHTML = "";
@@ -299,7 +292,7 @@
       }
     }
 
-    // 削除処理
+    // チェック選択削除
     function deleteSelectedRooms() {
       sitesData[currentSite] = sitesData[currentSite].filter((room, index) => {
         const checkbox = document.getElementById(`room-check-${index}`);
@@ -307,6 +300,15 @@
       });
       saveAll();
       renderRooms();
+    }
+
+    // 全部屋削除
+    function deleteAllRooms() {
+      if (confirm(`「${currentSite}」のすべての部屋を削除しますか？`)) {
+        sitesData[currentSite] = [];
+        saveAll();
+        renderRooms();
+      }
     }
 
     function deleteSingleRoom(index) {
