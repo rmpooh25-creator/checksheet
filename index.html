@@ -5,21 +5,35 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>部屋チェックシート</title>
   <style>
-    body { font-family: sans-serif; margin: 20px; }
-    table { border-collapse: collapse; width: 100%; margin-top: 10px; }
-    th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
-    th { background-color: #f4f4f4; }
-    .btn { padding: 6px 12px; margin: 2px; cursor: pointer; }
-    .btn-danger { background-color: #ff4d4d; color: white; border: none; }
-    .btn-primary { background-color: #007bff; color: white; border: none; }
+    body { font-family: sans-serif; margin: 15px; background: #f8f9fa; }
+    h1 { font-size: 1.4rem; margin-bottom: 10px; }
+    .card { background: white; padding: 12px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 15px; }
+    .btn { padding: 8px 12px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; margin: 2px; }
+    .btn-primary { background: #007bff; color: white; }
+    .btn-danger { background: #dc3545; color: white; }
+    .btn-secondary { background: #6c757d; color: white; }
+    input[type="text"], select { padding: 8px; border: 1px solid #ccc; border-radius: 4px; margin-right: 5px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; background: white; }
+    th, td { border: 1px solid #dee2e6; padding: 10px; text-align: center; }
+    th { background: #e9ecef; }
+    .room-row:hover { background: #f1f3f5; }
   </style>
 </head>
 <body>
 
-  <h1>部屋チェックシート</h1>
+  <div class="card">
+    <h1>部屋チェックシート</h1>
+    <div>
+      <label><b>現場選択: </b></label>
+      <select id="siteSelect" onchange="switchSite()"></select>
+      <button class="btn btn-secondary" onclick="addSite()">＋ 新規現場</button>
+      <button class="btn btn-danger" onclick="deleteCurrentSite()">🗑️ 現場削除</button>
+    </div>
+  </div>
 
-  <div>
-    <input type="text" id="roomInput" placeholder="例: 101 または 101-105">
+  <div class="card">
+    <h3>部屋追加（マトリクス/手動）</h3>
+    <input type="text" id="roomInput" placeholder="例: 101 または 101-105" style="width: 200px;">
     <button class="btn btn-primary" onclick="addRoomFromInput()">部屋追加</button>
     <button class="btn btn-danger" onclick="deleteSelectedRooms()">選択した部屋を削除</button>
   </div>
@@ -29,78 +43,164 @@
       <tr>
         <th>選択</th>
         <th>部屋番号</th>
-        <th>操作</th>
+        <th>ステータス / 操作</th>
       </tr>
     </thead>
     <tbody id="roomList"></tbody>
   </table>
 
   <script>
-    let rooms = JSON.parse(localStorage.getItem("rooms")) || [];
+    let sitesData = JSON.parse(localStorage.getItem("sitesData")) || { "既存現場": [] };
+    let currentSite = localStorage.getItem("currentSite") || Object.keys(sitesData)[0] || "既存現場";
 
-    // 初期描画
-    renderRooms();
+    if (!sitesData[currentSite]) {
+      sitesData[currentSite] = [];
+    }
 
-    // 部屋描画処理
+    init();
+
+    function init() {
+      renderSiteSelect();
+      renderRooms();
+    }
+
+    // 現場のプルダウン作成
+    function renderSiteSelect() {
+      const select = document.getElementById("siteSelect");
+      select.innerHTML = "";
+      Object.keys(sitesData).forEach(site => {
+        const opt = document.createElement("option");
+        opt.value = site;
+        opt.textContent = site;
+        if (site === currentSite) opt.selected = true;
+        select.appendChild(opt);
+      });
+    }
+
+    // 現場切り替え
+    function switchSite() {
+      currentSite = document.getElementById("siteSelect").value;
+      localStorage.setItem("currentSite", currentSite);
+      renderRooms();
+    }
+
+    // 新規現場追加
+    function addSite() {
+      const name = prompt("新しい現場名を入力してください:");
+      if (!name || !name.trim()) return;
+      const cleanName = name.trim();
+      if (cleanName.includes("function") || cleanName.includes("{")) {
+        alert("無効な現場名です。");
+        return;
+      }
+      if (!sitesData[cleanName]) {
+        sitesData[cleanName] = [];
+      }
+      currentSite = cleanName;
+      saveAll();
+      renderSiteSelect();
+      renderRooms();
+    }
+
+    // 現場削除
+    function deleteCurrentSite() {
+      if (Object.keys(sitesData).length <= 1) {
+        alert("最後の現場は削除できません。");
+        return;
+      }
+      if (confirm(`「${currentSite}」を削除してもよろしいですか？`)) {
+        delete sitesData[currentSite];
+        currentSite = Object.keys(sitesData)[0];
+        saveAll();
+        renderSiteSelect();
+        renderRooms();
+      }
+    }
+
+    // 部屋追加（101-105 などの範囲指定・マトリクス入力対応 + コード混入防止）
+    function addRoomFromInput() {
+      const input = document.getElementById("roomInput");
+      const rawVal = input.value.trim();
+      if (!rawVal) return;
+
+      // ガード: コードや特殊記号の誤混入を拒否
+      if (rawVal.includes("function") || rawVal.includes("{") || rawVal.includes(";")) {
+        alert("正しい部屋番号を入力してください。");
+        return;
+      }
+
+      // 101-105 のようなハイフン範囲入力の展開
+      if (rawVal.includes("-")) {
+        const parts = rawVal.split("-");
+        const start = parseInt(parts[0], 10);
+        const end = parseInt(parts[1], 10);
+
+        if (!isNaN(start) && !isNaN(end) && start <= end) {
+          for (let i = start; i <= end; i++) {
+            addRoomToList(String(i));
+          }
+        } else {
+          addRoomToList(rawVal);
+        }
+      } else {
+        addRoomToList(rawVal);
+      }
+
+      input.value = "";
+      saveAll();
+      renderRooms();
+    }
+
+    function addRoomToList(roomName) {
+      if (!sitesData[currentSite].includes(roomName)) {
+        sitesData[currentSite].push(roomName);
+      }
+    }
+
+    // 部屋一覧の描画（異常データ自動フィルタリング）
     function renderRooms() {
       const tbody = document.getElementById("roomList");
       tbody.innerHTML = "";
 
-      // 不正なデータ（コード文字列など）を自動除去して表示
-      rooms = rooms.filter(room => {
-        const name = String(room);
-        return !name.includes("function") && !name.includes("{") && name.length <= 20;
+      // 壊れたコード文字列を一覧から取り除く
+      sitesData[currentSite] = (sitesData[currentSite] || []).filter(room => {
+        const str = String(room);
+        return !str.includes("function") && !str.includes("{") && str.length <= 20;
       });
 
-      rooms.forEach((room, index) => {
+      sitesData[currentSite].forEach((room, index) => {
         const tr = document.createElement("tr");
+        tr.className = "room-row";
         tr.innerHTML = `
           <td><input type="checkbox" id="room-check-${index}"></td>
-          <td>${room}</td>
+          <td><b>${room}</b></td>
           <td><button class="btn btn-danger" onclick="deleteSingleRoom(${index})">削除</button></td>
         `;
         tbody.appendChild(tr);
       });
-
-      saveData();
     }
 
-    // ① 部屋追加処理（コードなどの不正入力を強力ガード）
-    function addRoomFromInput() {
-      const input = document.getElementById("roomInput");
-      const val = input.value.trim();
-
-      if (!val) return;
-
-      // プログラムコードや長文の混入をブロック
-      if (val.includes("function") || val.includes("{") || val.includes(";") || val.length > 20) {
-        alert("無効な部屋番号です。プログラムコードや特殊文字は入力できません。");
-        return;
-      }
-
-      rooms.push(val);
-      input.value = "";
-      renderRooms();
-    }
-
-    // ② 選択削除処理（インデックス指定でどんな文字でも確実に削除）
+    // 選択部屋の一括削除（インデックス基準で安全に削除）
     function deleteSelectedRooms() {
-      rooms = rooms.filter((room, index) => {
+      sitesData[currentSite] = sitesData[currentSite].filter((room, index) => {
         const checkbox = document.getElementById(`room-check-${index}`);
         return !checkbox || !checkbox.checked;
       });
+      saveAll();
       renderRooms();
     }
 
-    // 単体削除処理
+    // 単体削除
     function deleteSingleRoom(index) {
-      rooms.splice(index, 1);
+      sitesData[currentSite].splice(index, 1);
+      saveAll();
       renderRooms();
     }
 
-    // 保存処理
-    function saveData() {
-      localStorage.setItem("rooms", JSON.stringify(rooms));
+    // 全保存
+    function saveAll() {
+      localStorage.setItem("sitesData", JSON.stringify(sitesData));
+      localStorage.setItem("currentSite", currentSite);
     }
   </script>
 </body>
