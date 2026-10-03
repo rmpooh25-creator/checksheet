@@ -216,7 +216,8 @@
       }
     }
 
-    function createNewSite() {
+    // ★ 整理後の唯一の createNewSite() 関数
+    async function createNewSite() {
       const name = prompt('新しい現場名を入力してください:');
       if (!name || !name.trim()) return;
 
@@ -232,7 +233,9 @@
       localStorage.setItem('lastSelectedSiteId', newSite.id);
 
       updateSiteDropdown();
-      renderTable();
+      renderTable(false);
+
+      await saveDataToCloud();
     }
 
     function changeSite() {
@@ -248,11 +251,10 @@
       saveDataToCloud();
     }
 
-    function deleteCurrentSite() {
+    async function deleteCurrentSite() {
       const currentSite = getCurrentSite();
       if (!currentSite) return;
 
-      // 💥 削除確認のポップアップを追加
       const isConfirmed = confirm(`⚠️ 【確認】\n現場「${currentSite.siteName}」と登録されている全部屋データを本当に削除しますか？\n（この操作は元に戻せません）`);
       
       if (!isConfirmed) return;
@@ -268,7 +270,8 @@
       localStorage.setItem('lastSelectedSiteId', storeData.currentSiteId);
       
       updateSiteDropdown();
-      renderTable();
+      renderTable(false);
+      await saveDataToCloud();
     }
 
     function sortRooms(rooms) {
@@ -282,6 +285,8 @@
         const res = await fetch(GAS_URL);
         const data = await res.json();
         
+        if (isSaving) return;
+
         if (data && typeof data === 'object') {
           if (data.rooms && !data.sites) {
             const defaultId = "default_1";
