@@ -145,7 +145,7 @@
     };
 
     let isSaving = false;
-    let lastFetchRequestId = 0; // 非同期レスポンスの世代管理ID
+    let lastFetchRequestId = 0;
     let currentWorker = localStorage.getItem('workerName') || '';
     document.getElementById('userNameInput').value = currentWorker;
 
@@ -235,7 +235,6 @@
       updateSiteDropdown();
       renderTable(false);
 
-      // 新規現場を確定保存（完了するまで定期読み込みによる上書きを防ぐ）
       await saveDataToCloud();
     }
 
@@ -281,7 +280,6 @@
     }
 
     async function loadDataFromCloud() {
-      // 保存中なら定期同期を完全ブロック
       if (!GAS_URL || isSaving) return;
 
       const requestId = Date.now();
@@ -291,19 +289,18 @@
         const res = await fetch(GAS_URL);
         const data = await res.json();
         
-        // レスポンス受信時に保存処理中、または最新のリクエストでなければ棄てて上書きを防ぐ
         if (isSaving || requestId !== lastFetchRequestId) return;
 
         if (data && typeof data === 'object') {
-          if (data.rooms && !data.sites) {
+          if (data.sites && data.sites.length > 0) {
+            storeData.sites = data.sites;
+          } else if (data.rooms) {
             const defaultId = "default_1";
             storeData.sites = [{
               id: defaultId,
               siteName: data.siteName || "既存現場",
               rooms: data.rooms || []
             }];
-          } else if (data.sites && data.sites.length > 0) {
-            storeData.sites = data.sites;
           }
         }
 
@@ -318,13 +315,18 @@
     async function saveDataToCloud() {
       if (!GAS_URL) return;
       isSaving = true;
+      document.getElementById('syncStatus').textContent = "保存中...";
+
       try {
-        document.getElementById('syncStatus').textContent = "保存中...";
+        const params = new URLSearchParams();
+        params.append("data", JSON.stringify(storeData));
+
         await fetch(GAS_URL, {
           method: "POST",
           headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: "data=" + encodeURIComponent(JSON.stringify(storeData))
+          body: params.toString()
         });
+        
         document.getElementById('syncStatus').textContent = "最新";
       } catch (e) {
         document.getElementById('syncStatus').textContent = "保存エラー";
@@ -356,7 +358,7 @@
 
         tr.innerHTML = `
           <td>
-            <input type="checkbox" class="room-checkbox" data-index="${index}" />
+            <input type="checkbox" class="room-checkbox" value="${index}" />
           </td>
           <td><strong>${room.id}号室</strong></td>
           <td>
@@ -463,11 +465,13 @@
 
       if (confirm(`選択した ${checkboxes.length} 件の部屋を削除しますか？`)) {
         const indicesToDelete = Array.from(checkboxes)
-          .map(cb => parseInt(cb.getAttribute('data-index')))
+          .map(cb => parseInt(cb.value, 10))
           .sort((a, b) => b - a);
 
         indicesToDelete.forEach(index => {
-          currentSite.rooms.splice(index, 1);
+          if (index >= 0 && index < currentSite.rooms.length) {
+            currentSite.rooms.splice(index, 1);
+          }
         });
 
         renderTable();
