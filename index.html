@@ -14,6 +14,7 @@
     .btn-danger { background: #dc3545; color: white; }
     .btn-secondary { background: #6c757d; color: white; }
     .btn-warning { background: #ffc107; color: #212529; }
+    .btn-info { background: #17a2b8; color: white; }
     select, input[type="text"] { padding: 6px; border: 1px solid #ccc; border-radius: 4px; margin-right: 5px; margin-bottom: 5px; }
     .matrix-box { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 10px; background: #e9ecef; padding: 10px; border-radius: 6px; }
     table { width: 100%; border-collapse: collapse; margin-top: 10px; background: white; font-size: 0.9rem; }
@@ -32,6 +33,7 @@
     <div>
       <label><b>現場選択: </b></label>
       <select id="siteSelect" onchange="switchSite()"></select>
+      <button class="btn btn-info" onclick="renameCurrentSite()">✏️ 現場名編集</button>
       <button class="btn btn-secondary" onclick="addSite()">＋ 新規現場</button>
       <button class="btn btn-danger" onclick="deleteCurrentSite()">🗑️ 現場削除</button>
     </div>
@@ -100,7 +102,7 @@
       renderRooms();
     }
 
-    // 階数・号室の選択肢を 1〜50 まで拡張生成
+    // 階数・号室の選択肢生成（1〜50）
     function setupSelectOptions() {
       const startFloor = document.getElementById("startFloor");
       const endFloor = document.getElementById("endFloor");
@@ -110,20 +112,46 @@
       startFloor.innerHTML = ""; endFloor.innerHTML = "";
       startRoom.innerHTML = ""; endRoom.innerHTML = "";
 
-      // 階数（1F〜50F）
       for (let i = 1; i <= 50; i++) {
         startFloor.innerHTML += `<option value="${i}">${i}階</option>`;
         endFloor.innerHTML += `<option value="${i}">${i}階</option>`;
       }
       endFloor.value = "3";
 
-      // 号室（01号〜50号）
       for (let i = 1; i <= 50; i++) {
         const numStr = String(i).padStart(2, "0");
         startRoom.innerHTML += `<option value="${numStr}">${numStr}号室</option>`;
         endRoom.innerHTML += `<option value="${numStr}">${numStr}号室</option>`;
       }
       endRoom.value = "05";
+    }
+
+    // 現場名の編集機能（既存現場などの変更）
+    function renameCurrentSite() {
+      const newName = prompt("新しい現場名を入力してください:", currentSite);
+      if (!newName || !newName.trim()) return;
+
+      const cleanName = newName.trim();
+      if (cleanName === currentSite) return;
+
+      if (cleanName.includes("function") || cleanName.includes("{")) {
+        alert("無効な現場名です。");
+        return;
+      }
+
+      if (sitesData[cleanName]) {
+        alert("同名の現場が既に存在します。別の名前を指定してください。");
+        return;
+      }
+
+      // 既存のデータを新現場名に移行
+      sitesData[cleanName] = sitesData[currentSite];
+      delete sitesData[currentSite];
+      currentSite = cleanName;
+
+      saveAll();
+      renderSiteSelect();
+      renderRooms();
     }
 
     // マトリクス作成
@@ -212,9 +240,9 @@
             </span>
           </td>
           <td>
-            <input type="text" value="${room.memo || ""}" onchange="updateMemo(${index}, this.value)" placeholder="メモ入力">
+            <input type="text" value="${room.memo || ""}" oninput="updateMemo(${index}, this.value)" placeholder="メモ入力">
           </td>
-          <td class="history-text">${history}</td>
+          <td class="history-text" id="history-${index}">${history}</td>
           <td><button class="btn btn-danger" onclick="deleteSingleRoom(${index})">削除</button></td>
         `;
         tbody.appendChild(tr);
@@ -229,11 +257,16 @@
       renderRooms();
     }
 
+    // メモ入力時に即時データ保存・履歴更新（フォーカスが外れるのを待たずにすぐ入力可能）
     function updateMemo(index, text) {
       const room = sitesData[currentSite][index];
       room.memo = text;
       updateHistory(room);
       saveAll();
+      const historyTd = document.getElementById(`history-${index}`);
+      if (historyTd) {
+        historyTd.innerHTML = `${room.updatedAt}<br>担当: ${room.updatedBy || "未設定"}`;
+      }
     }
 
     function updateHistory(room) {
@@ -292,7 +325,6 @@
       }
     }
 
-    // チェック選択削除
     function deleteSelectedRooms() {
       sitesData[currentSite] = sitesData[currentSite].filter((room, index) => {
         const checkbox = document.getElementById(`room-check-${index}`);
@@ -302,7 +334,6 @@
       renderRooms();
     }
 
-    // 全部屋削除
     function deleteAllRooms() {
       if (confirm(`「${currentSite}」のすべての部屋を削除しますか？`)) {
         sitesData[currentSite] = [];
