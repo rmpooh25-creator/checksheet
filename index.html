@@ -63,7 +63,7 @@
     <input type="text" id="roomInput" placeholder="例: 101" style="width: 150px;">
     <button class="btn btn-primary" onclick="addSingleRoomFromInput()">部屋追加</button>
     <button class="btn btn-warning" onclick="deleteSelectedRooms()">チェックした部屋を削除</button>
-    <button class="btn btn-danger" onclick="deleteAllRooms()">⚠️️ 全部屋削除</button>
+    <button class="btn btn-danger" onclick="deleteAllRooms()">⚠ 全部屋削除</button>
   </div>
 
   <table>
@@ -81,8 +81,8 @@
   </table>
 
   <script>
-    // ↓ここにGASのWebアプリURL（https://script.google.com/macros/s/.../exec）を貼り付けます
-    const GAS_URL = "ここにGASのURLを貼り付け";
+    // 新しく発行されたGASのWebアプリURLをセット
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbxYblcCadixsNsGQ-bv1LN8QRHo4vw378oyBtOXAbeAF6FpkrRigDAsDVckpUw0ebX1cQ/exec";
 
     let sitesData = JSON.parse(localStorage.getItem("sitesData")) || { "既存現場": [] };
     let currentSite = localStorage.getItem("currentSite") || Object.keys(sitesData)[0] || "既存現場";
@@ -93,6 +93,7 @@
     }
 
     init();
+    loadFromCloud(); // 起動時にクラウドから最新データを取得
 
     function init() {
       document.getElementById("workerName").value = currentWorker;
@@ -100,7 +101,6 @@
         currentWorker = e.target.value.trim();
         localStorage.setItem("currentWorker", currentWorker);
       });
-
       setupSelectOptions();
       renderSiteSelect();
       renderRooms();
@@ -112,8 +112,10 @@
       const startRoom = document.getElementById("startRoom");
       const endRoom = document.getElementById("endRoom");
 
-      startFloor.innerHTML = ""; endFloor.innerHTML = "";
-      startRoom.innerHTML = ""; endRoom.innerHTML = "";
+      startFloor.innerHTML = "";
+      endFloor.innerHTML = "";
+      startRoom.innerHTML = "";
+      endRoom.innerHTML = "";
 
       for (let i = 1; i <= 50; i++) {
         startFloor.innerHTML += `<option value="${i}">${i}階</option>`;
@@ -132,19 +134,15 @@
     function renameCurrentSite() {
       const newName = prompt("新しい現場名を入力してください:", currentSite);
       if (!newName || !newName.trim()) return;
-
       const cleanName = newName.trim();
       if (cleanName === currentSite) return;
-
       if (sitesData[cleanName]) {
         alert("同名の現場が既に存在します。");
         return;
       }
-
       sitesData[cleanName] = sitesData[currentSite];
       delete sitesData[currentSite];
       currentSite = cleanName;
-
       saveAll();
       renderSiteSelect();
       renderRooms();
@@ -171,7 +169,6 @@
           }
         }
       }
-
       saveAll();
       renderRooms();
       alert(`${count}件の部屋を追加しました。`);
@@ -189,7 +186,6 @@
       const input = document.getElementById("roomInput");
       const val = input.value.trim();
       if (!val) return;
-
       if (!getRoomObj(val)) {
         sitesData[currentSite].push(createRoomObj(val));
       }
@@ -325,21 +321,40 @@
       renderRooms();
     }
 
+    // クラウド（スプレッドシート）からデータを読み込む関数
+    function loadFromCloud() {
+      if (!GAS_URL) return;
+      fetch(GAS_URL)
+        .then(res => res.json())
+        .then(data => {
+          if (data && data.sitesData) {
+            sitesData = data.sitesData;
+            if (!sitesData[currentSite]) {
+              currentSite = Object.keys(sitesData)[0] || "既存現場";
+            }
+            localStorage.setItem("sitesData", JSON.stringify(sitesData));
+            renderSiteSelect();
+            renderRooms();
+          }
+        })
+        .catch(err => console.log("ロードエラー", err));
+    }
+
     function saveAll() {
       localStorage.setItem("sitesData", JSON.stringify(sitesData));
       localStorage.setItem("currentSite", currentSite);
-
+      
       if (GAS_URL && GAS_URL !== "ここにGASのURLを貼り付け") {
         const statusEl = document.getElementById("syncStatus");
         statusEl.textContent = "☁️ 保存中...";
-
+        
         fetch(GAS_URL, {
           method: "POST",
           mode: "no-cors",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            siteName: currentSite,
-            rooms: sitesData[currentSite]
+            sitesData: sitesData,
+            currentSite: currentSite
           })
         }).then(() => {
           statusEl.textContent = "✓ シート保存完了";
