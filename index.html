@@ -23,8 +23,11 @@
     .status-badge { padding: 4px 8px; border-radius: 4px; font-weight: bold; cursor: pointer; display: inline-block; }
     .status-pending { background: #ffc107; color: #212529; }
     .status-completed { background: #28a745; color: white; }
+    .status-excluded { background: #6c757d; color: white; text-decoration: line-through; }
+    .row-excluded { background-color: #f1f3f5; color: #adb5bd; text-decoration: line-through; }
     .history-text { font-size: 0.75rem; color: #6c757d; line-height: 1.2; }
     .sync-status { font-size: 0.8rem; margin-left: 10px; color: #28a745; }
+    .room-count-info { font-size: 0.95rem; font-weight: bold; color: #495057; margin-top: 8px; }
   </style>
 </head>
 <body>
@@ -38,6 +41,7 @@
       <button class="btn btn-secondary" onclick="addSite()">＋ 新規現場</button>
       <button class="btn btn-danger" onclick="deleteCurrentSite()">🗑️ 現場削除</button>
     </div>
+    <div id="roomCountInfo" class="room-count-info">登録部屋数: 0件</div>
     <div style="margin-top: 10px;">
       <label><b>作業者名: </b></label>
       <input type="text" id="workerName" placeholder="担当者名を入力" style="width: 150px;">
@@ -81,7 +85,6 @@
   </table>
 
   <script>
-    // 新しく発行されたGASのWebアプリURLをセット
     const GAS_URL = "https://script.google.com/macros/s/AKfycbxYblcCadixsNsGQ-bv1LN8QRHo4vw378oyBtOXAbeAF6FpkrRigDAsDVckpUw0ebX1cQ/exec";
 
     let sitesData = JSON.parse(localStorage.getItem("sitesData")) || { "既存現場": [] };
@@ -93,7 +96,7 @@
     }
 
     init();
-    loadFromCloud(); // 起動時にクラウドから最新データを取得
+    loadFromCloud();
 
     function init() {
       document.getElementById("workerName").value = currentWorker;
@@ -103,7 +106,7 @@
       });
       setupSelectOptions();
       renderSiteSelect();
-      renderRooms();
+      sortAndRenderRooms();
     }
 
     function setupSelectOptions() {
@@ -145,7 +148,7 @@
       currentSite = cleanName;
       saveAll();
       renderSiteSelect();
-      renderRooms();
+      sortAndRenderRooms();
     }
 
     function generateMatrixRooms() {
@@ -170,7 +173,7 @@
         }
       }
       saveAll();
-      renderRooms();
+      sortAndRenderRooms();
       alert(`${count}件の部屋を追加しました。`);
     }
 
@@ -191,22 +194,49 @@
       }
       input.value = "";
       saveAll();
-      renderRooms();
+      sortAndRenderRooms();
     }
 
-    function renderRooms() {
-      const tbody = document.getElementById("roomList");
-      tbody.innerHTML = "";
+    // 部屋番号を自然順（101, 102, 103...）に並び替える関数
+    function sortRoomsArray(rooms) {
+      rooms.sort((a, b) => {
+        const nameA = typeof a === "object" ? a.name : a;
+        const nameB = typeof b === "object" ? b.name : b;
+        return nameA.localeCompare(nameB, undefined, { numeric: true, sensitivity: 'base' });
+      });
+    }
 
-      sitesData[currentSite] = (sitesData[currentSite] || []).map(room => {
+    function sortAndRenderRooms() {
+      const rooms = sitesData[currentSite] || [];
+      
+      // 文字列型が混ざっていたらオブジェクト型に変換
+      sitesData[currentSite] = rooms.map(room => {
         if (typeof room === "string") return createRoomObj(room);
         return room;
       });
 
+      // 自動ソート実行（番号順に綺麗に並ぶ）
+      sortRoomsArray(sitesData[currentSite]);
+
+      const tbody = document.getElementById("roomList");
+      tbody.innerHTML = "";
+
+      let completedCount = 0;
+      let excludedCount = 0;
+      const totalCount = sitesData[currentSite].length;
+
       sitesData[currentSite].forEach((room, index) => {
+        if (room.status === "完了") completedCount++;
+        if (room.status === "斜線(対象外)") excludedCount++;
+
         const tr = document.createElement("tr");
-        const isCompleted = room.status === "完了";
-        const statusClass = isCompleted ? "status-completed" : "status-pending";
+        let statusClass = "status-pending";
+        if (room.status === "完了") statusClass = "status-completed";
+        if (room.status === "斜線(対象外)") {
+          statusClass = "status-excluded";
+          tr.classList.add("row-excluded");
+        }
+
         const history = room.updatedAt ? `${room.updatedAt}<br>担当: ${room.updatedBy || "未設定"}` : "未記録";
 
         tr.innerHTML = `
@@ -225,14 +255,25 @@
         `;
         tbody.appendChild(tr);
       });
+
+      // 全部屋数の分かりやすい表示を更新
+      const countInfo = document.getElementById("roomCountInfo");
+      countInfo.textContent = `登録部屋数: ${totalCount}件 (完了: ${completedCount}件 / 対象外: ${excludedCount}件)`;
     }
 
+    // ステータス切替: 未完了 ➔ 完了 ➔ 斜線(対象外) ➔ 未完了
     function toggleStatus(index) {
       const room = sitesData[currentSite][index];
-      room.status = (room.status === "完了") ? "未完了" : "完了";
+      if (room.status === "未完了") {
+        room.status = "完了";
+      } else if (room.status === "完了") {
+        room.status = "斜線(対象外)";
+      } else {
+        room.status = "未完了";
+      }
       updateHistory(room);
       saveAll();
-      renderRooms();
+      sortAndRenderRooms();
     }
 
     function updateMemo(index, text) {
@@ -268,7 +309,7 @@
     function switchSite() {
       currentSite = document.getElementById("siteSelect").value;
       localStorage.setItem("currentSite", currentSite);
-      renderRooms();
+      sortAndRenderRooms();
     }
 
     function addSite() {
@@ -281,7 +322,7 @@
       currentSite = cleanName;
       saveAll();
       renderSiteSelect();
-      renderRooms();
+      sortAndRenderRooms();
     }
 
     function deleteCurrentSite() {
@@ -294,7 +335,7 @@
         currentSite = Object.keys(sitesData)[0];
         saveAll();
         renderSiteSelect();
-        renderRooms();
+        sortAndRenderRooms();
       }
     }
 
@@ -304,24 +345,23 @@
         return !checkbox || !checkbox.checked;
       });
       saveAll();
-      renderRooms();
+      sortAndRenderRooms();
     }
 
     function deleteAllRooms() {
       if (confirm(`「${currentSite}」のすべての部屋を削除しますか？`)) {
         sitesData[currentSite] = [];
         saveAll();
-        renderRooms();
+        sortAndRenderRooms();
       }
     }
 
     function deleteSingleRoom(index) {
       sitesData[currentSite].splice(index, 1);
       saveAll();
-      renderRooms();
+      sortAndRenderRooms();
     }
 
-    // クラウド（スプレッドシート）からデータを読み込む関数
     function loadFromCloud() {
       if (!GAS_URL) return;
       fetch(GAS_URL)
@@ -334,7 +374,7 @@
             }
             localStorage.setItem("sitesData", JSON.stringify(sitesData));
             renderSiteSelect();
-            renderRooms();
+            sortAndRenderRooms();
           }
         })
         .catch(err => console.log("ロードエラー", err));
