@@ -24,7 +24,14 @@
     .status-pending { background: #ffc107; color: #212529; }
     .status-completed { background: #28a745; color: white; }
     .status-excluded { background: #6c757d; color: white; text-decoration: line-through; }
-    .row-excluded { background-color: #f1f3f5; color: #adb5bd; text-decoration: line-through; }
+    .row-excluded { background-color: #f1f3f5 !important; color: #adb5bd; text-decoration: line-through; }
+    
+    /* マーカー用の背景色定義 */
+    .marker-yellow { background-color: #fff3cd !important; }
+    .marker-red { background-color: #f8d7da !important; }
+    .marker-blue { background-color: #cce5ff !important; }
+
+    .marker-btn { background: none; border: 1px solid #ccc; border-radius: 4px; padding: 4px 6px; cursor: pointer; font-size: 1rem; }
     .history-text { font-size: 0.75rem; color: #6c757d; line-height: 1.2; }
     .sync-status { font-size: 0.8rem; margin-left: 10px; color: #28a745; }
     .room-count-info { font-size: 0.95rem; font-weight: bold; color: #495057; margin-top: 8px; }
@@ -75,6 +82,7 @@
       <tr>
         <th>選択</th>
         <th>部屋番号</th>
+        <th>マーカー</th>
         <th>ステータス（切替可）</th>
         <th>メモ</th>
         <th>最終更新（誰が・いつ）</th>
@@ -178,7 +186,7 @@
     }
 
     function createRoomObj(name) {
-      return { name: name, status: "未完了", memo: "", updatedAt: "", updatedBy: "" };
+      return { name: name, status: "未完了", marker: "none", memo: "", updatedAt: "", updatedBy: "" };
     }
 
     function getRoomObj(name) {
@@ -197,7 +205,6 @@
       sortAndRenderRooms();
     }
 
-    // 部屋番号を自然順（101, 102, 103...）に並び替える関数
     function sortRoomsArray(rooms) {
       rooms.sort((a, b) => {
         const nameA = typeof a === "object" ? a.name : a;
@@ -209,13 +216,12 @@
     function sortAndRenderRooms() {
       const rooms = sitesData[currentSite] || [];
       
-      // 文字列型が混ざっていたらオブジェクト型に変換
       sitesData[currentSite] = rooms.map(room => {
         if (typeof room === "string") return createRoomObj(room);
+        if (!room.marker) room.marker = "none"; // 既存データ救済
         return room;
       });
 
-      // 自動ソート実行（番号順に綺麗に並ぶ）
       sortRoomsArray(sitesData[currentSite]);
 
       const tbody = document.getElementById("roomList");
@@ -230,6 +236,12 @@
         if (room.status === "斜線(対象外)") excludedCount++;
 
         const tr = document.createElement("tr");
+
+        // マーカー色の適用
+        if (room.marker === "yellow") tr.classList.add("marker-yellow");
+        if (room.marker === "red") tr.classList.add("marker-red");
+        if (room.marker === "blue") tr.classList.add("marker-blue");
+
         let statusClass = "status-pending";
         if (room.status === "完了") statusClass = "status-completed";
         if (room.status === "斜線(対象外)") {
@@ -237,11 +249,20 @@
           tr.classList.add("row-excluded");
         }
 
+        // マーカーボタンのアイコン切替
+        let markerIcon = "⚪";
+        if (room.marker === "yellow") markerIcon = "🟡";
+        if (room.marker === "red") markerIcon = "🔴";
+        if (room.marker === "blue") markerIcon = "🔵";
+
         const history = room.updatedAt ? `${room.updatedAt}<br>担当: ${room.updatedBy || "未設定"}` : "未記録";
 
         tr.innerHTML = `
           <td><input type="checkbox" id="room-check-${index}"></td>
           <td><b>${room.name}</b></td>
+          <td>
+            <button class="marker-btn" onclick="toggleMarker(${index})" title="クリックしてマーカー変更">${markerIcon}</button>
+          </td>
           <td>
             <span class="status-badge ${statusClass}" onclick="toggleStatus(${index})">
               ${room.status || "未完了"}
@@ -256,12 +277,26 @@
         tbody.appendChild(tr);
       });
 
-      // 全部屋数の分かりやすい表示を更新
       const countInfo = document.getElementById("roomCountInfo");
       countInfo.textContent = `登録部屋数: ${totalCount}件 (完了: ${completedCount}件 / 対象外: ${excludedCount}件)`;
     }
 
-    // ステータス切替: 未完了 ➔ 完了 ➔ 斜線(対象外) ➔ 未完了
+    // マーカー切替: none ➔ yellow ➔ red ➔ blue ➔ none
+    function toggleMarker(index) {
+      const room = sitesData[currentSite][index];
+      if (room.marker === "none" || !room.marker) {
+        room.marker = "yellow";
+      } else if (room.marker === "yellow") {
+        room.marker = "red";
+      } else if (room.marker === "red") {
+        room.marker = "blue";
+      } else {
+        room.marker = "none";
+      }
+      saveAll();
+      sortAndRenderRooms();
+    }
+
     function toggleStatus(index) {
       const room = sitesData[currentSite][index];
       if (room.status === "未完了") {
